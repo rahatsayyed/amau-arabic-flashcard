@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
@@ -75,12 +76,15 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
   const [dailyGoal, setDailyGoalState] = useState(20);
 
   // UI state
+  const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editCard, setEditCard] = useState<{ id: string; arabic: string; meaning: string } | null>(null);
   const [editArabic, setEditArabic] = useState('');
   const [editMeaning, setEditMeaning] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const cd = getCustomDeckById(id);
@@ -323,11 +327,12 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* ── Delete confirmation modal ────────────────────────────────────────── */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-on-surface/40 backdrop-blur-sm">
-          <div className="w-[90%] max-w-sm bg-surface rounded-xl shadow-2xl p-md flex flex-col gap-md">
+      {/* ── Portals: rendered at document.body to escape phone-shell clip ─────── */}
+      {mounted && showDeleteModal && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-inverse-surface/40 backdrop-blur-sm">
+          <div className="w-[90%] max-w-[360px] bg-surface rounded-xl shadow-2xl overflow-hidden p-6 flex flex-col gap-6">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-secondary-container/20 rounded-full flex items-center justify-center mb-sm">
+              <div className="w-16 h-16 bg-secondary-container/20 rounded-full flex items-center justify-center mb-4">
                 <span
                   className="material-symbols-outlined text-secondary text-[40px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -335,36 +340,38 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
                   warning
                 </span>
               </div>
-              <h3 className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-xs">Delete Deck?</h3>
+              <h3 className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Delete Deck?</h3>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-on-surface">'{deck.title}'</span>?
-                This action cannot be undone.
+                Are you sure you want to delete{' '}
+                <span className="font-bold text-on-surface">'{deck.title}'</span>?
+                This action cannot be undone and all your progress will be lost.
               </p>
             </div>
-            <div className="flex flex-col gap-sm">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={handleDelete}
-                className="w-full py-4 bg-secondary text-on-secondary font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-4 bg-secondary text-on-secondary font-bold rounded-lg flex items-center justify-center gap-2 active:translate-y-0.5 transition-all"
                 style={{ boxShadow: '0 2px 0 0 #8f1000' }}
               >
                 <span className="material-symbols-outlined text-[20px]">delete</span>
-                Delete Deck
+                Delete Forever
               </button>
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="w-full py-4 border-2 border-outline/20 text-on-surface-variant font-bold rounded-xl hover:bg-surface-container-low transition-colors"
+                className="w-full py-4 border-2 border-outline/20 text-on-surface-variant font-bold rounded-lg hover:bg-surface-container-low transition-colors"
               >
-                Cancel
+                Keep Deck
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Edit card bottom drawer ──────────────────────────────────────────── */}
-      {editCard && (
-        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end">
-          <div className="w-full bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]">
+      {mounted && editCard && createPortal(
+        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end justify-center">
+          <div className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]">
             <div className="flex justify-center py-3 cursor-grab" onClick={() => setEditCard(null)}>
               <div className="w-10 h-1.5 bg-outline-variant rounded-full" />
             </div>
@@ -413,7 +420,8 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

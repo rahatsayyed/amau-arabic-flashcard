@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${beVietnamPro.variable} ${sourceSerif4.variable} ${notoSerif.variable} bg-stone-300 flex justify-center items-start font-body-md text-on-surface`}
       >
         {/* Phone shell — 390px centred on desktop, full-width on mobile */}
-        <div className="w-full max-w-[390px] h-dvh bg-surface shadow-2xl flex flex-col overflow-hidden">
+        <div className="w-full max-w-[390px] h-dvh bg-surface shadow-2xl flex flex-col">
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto">
             {children}
