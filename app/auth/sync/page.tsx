@@ -1,12 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getUserProgress } from '@/lib/storage';
 import { fetchCloudProgress, saveProgressToCloud } from '@/lib/supabase/progress';
 import type { UserProgress } from '@/lib/storage';
 
 export default function AuthSyncPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-dvh flex items-center justify-center bg-surface">
+        <span className="material-symbols-outlined text-primary text-[48px] animate-spin">progress_activity</span>
+      </div>
+    }>
+      <AuthSyncContent />
+    </Suspense>
+  );
+}
+
+function AuthSyncContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/';
