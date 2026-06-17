@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/', icon: 'home', label: 'Home' },
   { href: '/decks', icon: 'style', label: 'Decks' },
+  { href: '/leaderboard', icon: 'emoji_events', label: 'Leaderboard' },
   { href: '/profile', icon: 'person', label: 'Profile' },
-  { href: '/settings', icon: 'settings', label: 'Settings' },
 ];
 
 // Only these top-level routes show the bottom nav
-const NAV_ROOTS = new Set(['/', '/decks', '/profile', '/settings']);
+const NAV_ROOTS = new Set(['/', '/decks', '/leaderboard', '/profile']);
 
 export default function BottomNav() {
   const pathname = usePathname();

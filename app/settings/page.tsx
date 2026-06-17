@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { clearSyncedLocalData } from '@/lib/supabase/progress';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import type { User } from '@supabase/supabase-js';
 
 type TextSize = 'small' | 'medium' | 'large';
@@ -36,8 +37,14 @@ export default function SettingsPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex items-center justify-between px-gutter h-16 bg-primary-container text-on-primary">
-        <span className="font-headline-lg-mobile text-headline-lg-mobile">Settings</span>
+      <header className="sticky top-0 z-50 flex items-center gap-3 px-gutter h-16 bg-primary-container text-on-primary">
+        <button
+          onClick={() => router.back()}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0"
+        >
+          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+        </button>
+        <span className="font-headline-lg-mobile text-headline-lg-mobile flex-1">Settings</span>
         {avatarUrl ? (
           <Image src={avatarUrl} alt={displayName} width={36} height={36} className="w-9 h-9 rounded-full border-2 border-on-primary/30 object-cover" />
         ) : (
@@ -171,13 +178,9 @@ export default function SettingsPage() {
         )}
 
         {!user && (
-          <Link
-            href="/login"
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary-container text-on-primary font-bold font-label-md text-label-md hover:brightness-110 active:scale-[0.98] transition-all mb-sm"
-          >
-            <span className="material-symbols-outlined text-[20px]">login</span>
-            Sign in with Google
-          </Link>
+          <GoogleSignInButton
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary-container text-on-primary font-bold font-label-md text-label-md hover:brightness-110 active:scale-[0.98] transition-all mb-sm disabled:opacity-60"
+          />
         )}
 
         <p className="text-center font-label-md text-[11px] text-on-surface-variant/50">

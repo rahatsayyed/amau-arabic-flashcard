@@ -8,6 +8,7 @@ import { getUserProgress, getWeeklyActivity } from '@/lib/storage';
 import { DECKS } from '@/data/vocabulary';
 import { createClient } from '@/lib/supabase/client';
 import { clearSyncedLocalData } from '@/lib/supabase/progress';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import type { User } from '@supabase/supabase-js';
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -54,23 +55,12 @@ export default function ProfilePage() {
     <>
       <header className="sticky top-0 z-50 flex items-center justify-between px-gutter h-16 bg-primary-container text-on-primary">
         <span className="font-headline-lg-mobile text-headline-lg-mobile">Profile</span>
-        {user ? (
-          <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 font-label-md text-label-md text-on-primary transition-colors disabled:opacity-60"
-          >
-            <span className="material-symbols-outlined text-[18px]">logout</span>
-            {signingOut ? 'Signing out…' : 'Sign out'}
-          </button>
-        ) : (
-          <Link
-            href="/login"
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
-          >
-            <span className="material-symbols-outlined text-[20px]">login</span>
-          </Link>
-        )}
+        <Link
+          href="/settings"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+        >
+          <span className="material-symbols-outlined text-[20px]">settings</span>
+        </Link>
       </header>
 
       {/* Hero */}
@@ -206,13 +196,9 @@ export default function ProfilePage() {
             <p className="font-body-md text-label-md text-on-surface-variant mb-md">
               Sign in with Google to save your decks and progress across devices.
             </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 bg-primary-container text-on-primary px-sm py-2.5 rounded-xl font-label-md text-label-md hover:brightness-110 transition-all"
-            >
-              <span className="material-symbols-outlined text-[18px]">login</span>
-              Sign In with Google
-            </Link>
+            <GoogleSignInButton
+              className="inline-flex items-center gap-2 bg-primary-container text-on-primary px-sm py-2.5 rounded-xl font-label-md text-label-md hover:brightness-110 transition-all disabled:opacity-60"
+            />
           </div>
         )}
       </div>
