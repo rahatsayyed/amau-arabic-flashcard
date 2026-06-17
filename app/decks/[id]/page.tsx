@@ -1,55 +1,154 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
-import { getCardState, getDeckProgress, getDailyGoal, saveDailyGoal } from '@/lib/storage';
+import {
+  getCardState,
+  getDeckProgress,
+  getDailyGoal,
+  saveDailyGoal,
+  getCustomDeckById,
+  deleteCustomDeck,
+  saveCustomDeck,
+  getAllCardOverrides,
+  saveCardOverride,
+  CustomDeck,
+  CustomCard,
+} from '@/lib/storage';
 
-function getCardStatus(stability: number): 'new' | 'learning' | 'review' | 'mastered' {
-  if (stability === 0) return 'new';
-  if (stability < 1) return 'learning';
-  if (stability < 5) return 'review';
+// ── FSRS status ──────────────────────────────────────────────────────────────
+
+type Status = 'new' | 'learning' | 'reviewing' | 'mastered';
+
+function getCardStatus(state: number, stability: number): Status {
+  if (state === 0) return 'new';
+  if (state === 1 || state === 3) return 'learning';
+  if (stability < 10) return 'reviewing';
   return 'mastered';
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  new: 'New',
-  learning: 'Learning',
-  review: 'Review',
-  mastered: '✓ Mastered',
-};
-const STATUS_COLOR: Record<string, string> = {
-  new: 'text-on-surface-variant',
-  learning: 'text-on-tertiary-container',
-  review: 'text-primary',
-  mastered: 'text-secondary',
-};
+function StatusIndicator({ status }: { status: Status }) {
+  if (status === 'new') {
+    return <span className="font-label-md text-label-md text-secondary-container">New</span>;
+  }
+  if (status === 'learning') {
+    return (
+      <div className="flex gap-0.5 justify-end mt-1">
+        <div className="w-2 h-2 rounded-full bg-secondary-container" />
+        <div className="w-2 h-2 rounded-full bg-secondary-container" />
+        <div className="w-2 h-2 rounded-full bg-primary/10" />
+      </div>
+    );
+  }
+  if (status === 'reviewing') {
+    return <span className="font-label-md text-label-md text-on-tertiary-container">Reviewing</span>;
+  }
+  return (
+    <span
+      className="material-symbols-outlined text-secondary-container"
+      style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}
+    >
+      verified
+    </span>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DeckDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const deck = getDeckById(id);
+
+  // Resolve deck (built-in or custom)
+  const builtinDeck = getDeckById(id);
+  const [customDeck, setCustomDeck] = useState<CustomDeck | null>(null);
+  const isCustom = !builtinDeck;
+
+  const deck = builtinDeck ?? customDeck;
+
+  // Stats
   const [progress, setProgress] = useState(0);
-  const [cardStatuses, setCardStatuses] = useState<Record<string, string>>({});
+  const [cardStatuses, setCardStatuses] = useState<Record<string, Status>>({});
+  const [overrides, setOverrides] = useState<Record<string, { arabic: string; meaning: string }>>({});
   const [dailyGoal, setDailyGoalState] = useState(20);
+
+  // UI state
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editCard, setEditCard] = useState<{ id: string; arabic: string; meaning: string } | null>(null);
+  const [editArabic, setEditArabic] = useState('');
+  const [editMeaning, setEditMeaning] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const cd = getCustomDeckById(id);
+    if (cd) setCustomDeck(cd);
+  }, [id]);
 
   useEffect(() => {
     if (!deck) return;
     setProgress(getDeckProgress(id, deck.cards.length));
     setDailyGoalState(getDailyGoal());
-    const statuses: Record<string, string> = {};
+    setOverrides(getAllCardOverrides(id));
+
+    const statuses: Record<string, Status> = {};
     for (const card of deck.cards.slice(0, 80)) {
       const state = getCardState(id, card.id);
-      statuses[card.id] = getCardStatus(state.card.stability);
+      statuses[card.id] = getCardStatus(state.card.state as number, state.card.stability);
     }
     setCardStatuses(statuses);
   }, [id, deck]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   const adjustGoal = (delta: number) => {
     const next = Math.max(5, Math.min(50, dailyGoal + delta));
     setDailyGoalState(next);
     saveDailyGoal(next);
+  };
+
+  const handleDelete = () => {
+    deleteCustomDeck(id);
+    router.replace('/decks');
+  };
+
+  const openEditCard = (card: { id: string; arabic: string; meaning: string }) => {
+    const ov = overrides[card.id];
+    setEditArabic(ov?.arabic ?? card.arabic);
+    setEditMeaning(ov?.meaning ?? card.meaning);
+    setEditCard(card);
+  };
+
+  const saveEdit = () => {
+    if (!editCard) return;
+    if (isCustom && customDeck) {
+      // Update the card in the custom deck
+      const updated: CustomDeck = {
+        ...customDeck,
+        cards: customDeck.cards.map(c =>
+          c.id === editCard.id ? { ...c, arabic: editArabic, meaning: editMeaning } : c
+        ),
+        updatedAt: new Date().toISOString(),
+      };
+      saveCustomDeck(updated);
+      setCustomDeck(updated);
+    } else {
+      saveCardOverride(id, editCard.id, { arabic: editArabic, meaning: editMeaning });
+      setOverrides(prev => ({ ...prev, [editCard.id]: { arabic: editArabic, meaning: editMeaning } }));
+    }
+    setEditCard(null);
   };
 
   if (!deck) {
@@ -65,6 +164,7 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-gutter h-16 bg-surface shadow-sm">
         <button
           onClick={() => router.back()}
@@ -75,49 +175,64 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
         <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary truncate mx-2">
           {deck.title}
         </h1>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low active:opacity-80 transition-opacity">
-          <span className="material-symbols-outlined text-primary">more_vert</span>
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low active:opacity-80 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-primary">more_vert</span>
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
+              <Link
+                href={`/decks/${id}/edit`}
+                onClick={() => setMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant">edit</span>
+                <span className="font-label-md text-label-md text-on-surface">Edit Deck</span>
+              </Link>
+              <button
+                onClick={() => { setMenuOpen(false); setShowDeleteModal(true); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-error-container/10 transition-colors text-left border-t border-primary/5"
+              >
+                <span className="material-symbols-outlined text-error">delete</span>
+                <span className="font-label-md text-label-md text-error">Delete Deck</span>
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="px-container-margin pt-base pb-md">
 
-        {/* ── Hero section ────────────────────────────── */}
+        {/* ── Hero ────────────────────────────────────────────────────────── */}
         <section className="mb-lg">
-          {/* Decorative banner using first Arabic word as background motif */}
           <div className="relative w-full h-40 rounded-xl overflow-hidden mb-md shadow-sm bg-primary-container">
             <span
-              className="absolute inset-0 flex items-center justify-center text-on-primary opacity-5 select-none pointer-events-none arabic-text"
-              style={{ fontSize: '120px', lineHeight: 1 }}
+              className="absolute inset-0 flex items-center justify-center text-on-primary opacity-5 select-none pointer-events-none"
+              style={{ fontSize: '120px', lineHeight: 1, fontFamily: 'Noto Serif' }}
               aria-hidden="true"
             >
               {deck.cards[0]?.arabic}
             </span>
-            {/* gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-primary-container/80 to-transparent" />
-            {/* badge */}
             <div className="absolute bottom-4 left-4">
               <span className="bg-secondary-container text-on-secondary-fixed px-3 py-1 rounded-full font-label-md text-label-md">
                 {progress > 0 ? 'In Progress' : 'Not Started'}
               </span>
             </div>
           </div>
-          <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-xs">
-            {deck.title}
-          </h2>
-          <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-            {deck.description}
-          </p>
+          <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-xs">{deck.title}</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">{deck.description}</p>
         </section>
 
-        {/* ── Stats bento ─────────────────────────────── */}
+        {/* ── Stats bento ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-sm mb-lg">
-          {/* Cards */}
           <div className="bg-surface-container-low p-md rounded-xl border border-primary/5">
             <p className="font-label-md text-label-md text-on-surface-variant mb-xs">CARDS</p>
             <p className="font-title-md text-title-md text-primary">{deck.cards.length} Words</p>
           </div>
-          {/* Mastery */}
           <div className="bg-surface-container-low p-md rounded-xl border border-primary/5">
             <p className="font-label-md text-label-md text-on-surface-variant mb-xs">MASTERY</p>
             <div className="flex items-center gap-2">
@@ -127,7 +242,6 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
           </div>
-          {/* Daily Goal — spans full width */}
           <div className="col-span-2 bg-surface-container-low p-md rounded-xl border border-primary/5 flex items-center justify-between">
             <div>
               <p className="font-label-md text-label-md text-on-surface-variant mb-xs">DAILY GOAL</p>
@@ -152,19 +266,19 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* ── Start Studying ──────────────────────────── */}
+        {/* ── Start Studying ───────────────────────────────────────────────── */}
         <div className="mb-lg">
           <Link
             href={`/decks/${id}/study`}
-            className="w-full h-14 bg-secondary-container text-on-secondary flex items-center justify-center gap-sm rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all duration-200 font-label-md text-label-md"
+            className="w-full h-14 bg-secondary-container text-on-secondary flex items-center justify-center gap-3 rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all duration-200 font-bold"
           >
             <span className="material-symbols-outlined">play_arrow</span>
-            <span className="uppercase tracking-wider">Start Studying</span>
+            <span className="font-label-md text-label-md uppercase tracking-wider">Start Studying</span>
           </Link>
         </div>
 
-        {/* ── Word list ───────────────────────────────── */}
-        <div className="flex items-center justify-between mb-sm border-b border-primary/10 pb-2">
+        {/* ── Word list ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-md border-b border-primary/10 pb-2">
           <h3 className="font-title-md text-title-md text-primary flex items-center gap-2">
             <span className="w-1.5 h-6 bg-primary-container rounded-full" />
             Word List
@@ -176,27 +290,28 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
 
         <div className="space-y-sm mb-md">
           {deck.cards.slice(0, 80).map(card => {
+            const ov = overrides[card.id];
+            const arabic = ov?.arabic ?? card.arabic;
+            const meaning = ov?.meaning ?? card.meaning;
             const status = cardStatuses[card.id] ?? 'new';
             return (
-              <div
+              <button
                 key={card.id}
-                className="bg-surface p-md rounded-xl border border-primary/5 tonal-elevation flex items-center justify-between hover:bg-surface-container-lowest transition-colors"
+                onClick={() => openEditCard({ id: card.id, arabic: card.arabic, meaning: card.meaning })}
+                className="w-full bg-surface p-md rounded-xl border border-primary/5 flex items-center justify-between hover:bg-surface-container-lowest transition-colors text-left"
+                style={{ boxShadow: '0 4px 12px rgba(23,54,59,0.04)' }}
               >
-                <div className="flex flex-col">
-                  <span className="font-arabic-body text-arabic-body text-primary arabic-text leading-tight">
-                    {card.arabic}
-                  </span>
-                  {card.type === 'sentence' && (
-                    <span className="font-label-md text-[11px] text-on-surface-variant mt-0.5">sentence</span>
-                  )}
-                </div>
-                <div className="text-right ml-2 flex-shrink-0">
-                  <span className="font-body-lg text-body-lg text-primary block">{card.meaning}</span>
-                  <span className={`font-label-md text-label-md capitalize ${STATUS_COLOR[status] ?? 'text-on-surface-variant'}`}>
-                    {STATUS_LABEL[status] ?? status}
+                <div className="flex flex-col min-w-0 flex-1 mr-3">
+                  <span className="font-arabic-body text-arabic-body text-primary leading-tight truncate"
+                    dir="rtl">
+                    {arabic}
                   </span>
                 </div>
-              </div>
+                <div className="text-right flex-shrink-0 max-w-[48%]">
+                  <span className="font-body-lg text-body-lg text-primary block truncate">{meaning}</span>
+                  <StatusIndicator status={status} />
+                </div>
+              </button>
             );
           })}
           {deck.cards.length > 80 && (
@@ -206,6 +321,100 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
       </div>
+
+      {/* ── Delete confirmation modal ────────────────────────────────────────── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-on-surface/40 backdrop-blur-sm">
+          <div className="w-[90%] max-w-sm bg-surface rounded-xl shadow-2xl p-md flex flex-col gap-md">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-secondary-container/20 rounded-full flex items-center justify-center mb-sm">
+                <span
+                  className="material-symbols-outlined text-secondary text-[40px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  warning
+                </span>
+              </div>
+              <h3 className="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-xs">Delete Deck?</h3>
+              <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                Are you sure you want to delete <span className="font-bold text-on-surface">'{deck.title}'</span>?
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex flex-col gap-sm">
+              <button
+                onClick={handleDelete}
+                className="w-full py-4 bg-secondary text-on-secondary font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                style={{ boxShadow: '0 2px 0 0 #8f1000' }}
+              >
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+                Delete Deck
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-4 border-2 border-outline/20 text-on-surface-variant font-bold rounded-xl hover:bg-surface-container-low transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit card bottom drawer ──────────────────────────────────────────── */}
+      {editCard && (
+        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end">
+          <div className="w-full bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]">
+            <div className="flex justify-center py-3 cursor-grab" onClick={() => setEditCard(null)}>
+              <div className="w-10 h-1.5 bg-outline-variant rounded-full" />
+            </div>
+            <div className="px-container-margin pb-md overflow-y-auto">
+              <h3 className="font-title-md text-title-md text-primary mb-md">Edit Card</h3>
+              <div className="space-y-md mb-lg">
+                <div className="space-y-xs">
+                  <label className="block font-label-md text-label-md text-on-surface-variant">
+                    Arabic Word / Phrase
+                  </label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={editArabic}
+                    onChange={e => setEditArabic(e.target.value)}
+                    className="w-full h-14 px-4 rounded-xl border border-outline-variant bg-surface focus:border-secondary-container focus:ring-1 focus:ring-secondary-container outline-none transition-all font-arabic-body text-arabic-body"
+                    placeholder="e.g. مطار"
+                  />
+                </div>
+                <div className="space-y-xs">
+                  <label className="block font-label-md text-label-md text-on-surface-variant">
+                    English Translation
+                  </label>
+                  <input
+                    type="text"
+                    value={editMeaning}
+                    onChange={e => setEditMeaning(e.target.value)}
+                    className="w-full h-14 px-4 rounded-xl border border-outline-variant bg-surface focus:border-secondary-container focus:ring-1 focus:ring-secondary-container outline-none transition-all font-body-md text-body-md"
+                    placeholder="e.g. Airport"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-sm">
+                <button
+                  onClick={() => setEditCard(null)}
+                  className="flex-1 h-14 rounded-xl font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 h-14 bg-secondary-container text-on-secondary rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all font-label-md text-label-md uppercase tracking-wider"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

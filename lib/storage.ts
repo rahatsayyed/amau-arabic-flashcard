@@ -169,6 +169,82 @@ export function getLastStudiedDeckId(): string | null {
   return localStorage.getItem(LAST_DECK_KEY);
 }
 
+// ── Custom decks ─────────────────────────────────────────────────────────────
+
+export interface CustomCard {
+  id: string;
+  arabic: string;
+  meaning: string;
+  type: 'vocab' | 'sentence';
+}
+
+export interface CustomDeck {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isPublic: boolean;
+  cards: CustomCard[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+const CUSTOM_DECKS_KEY = 'amau_custom_decks';
+const CARD_OVERRIDES_KEY = 'amau_card_overrides';
+
+export function getCustomDecks(): CustomDeck[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_DECKS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function getCustomDeckById(id: string): CustomDeck | undefined {
+  return getCustomDecks().find(d => d.id === id);
+}
+
+export function saveCustomDeck(deck: CustomDeck): void {
+  if (typeof window === 'undefined') return;
+  const decks = getCustomDecks();
+  const idx = decks.findIndex(d => d.id === deck.id);
+  if (idx >= 0) decks[idx] = deck;
+  else decks.push(deck);
+  localStorage.setItem(CUSTOM_DECKS_KEY, JSON.stringify(decks));
+}
+
+export function deleteCustomDeck(id: string): void {
+  if (typeof window === 'undefined') return;
+  const decks = getCustomDecks().filter(d => d.id !== id);
+  localStorage.setItem(CUSTOM_DECKS_KEY, JSON.stringify(decks));
+}
+
+export function getAllCardOverrides(deckId: string): Record<string, { arabic: string; meaning: string }> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(CARD_OVERRIDES_KEY);
+    const all: Record<string, { arabic: string; meaning: string }> = raw ? JSON.parse(raw) : {};
+    const result: Record<string, { arabic: string; meaning: string }> = {};
+    for (const [key, val] of Object.entries(all)) {
+      const sep = key.indexOf('::');
+      if (sep !== -1 && key.slice(0, sep) === deckId) {
+        result[key.slice(sep + 2)] = val;
+      }
+    }
+    return result;
+  } catch { return {}; }
+}
+
+export function saveCardOverride(deckId: string, cardId: string, data: { arabic: string; meaning: string }): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(CARD_OVERRIDES_KEY);
+    const all: Record<string, { arabic: string; meaning: string }> = raw ? JSON.parse(raw) : {};
+    all[`${deckId}::${cardId}`] = data;
+    localStorage.setItem(CARD_OVERRIDES_KEY, JSON.stringify(all));
+  } catch {}
+}
+
 export function getWeeklyActivity(): number[] {
   const p = getProgress();
   const days: number[] = [];
