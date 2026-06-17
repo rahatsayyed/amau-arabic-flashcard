@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { href: '/', icon: 'home', label: 'Home' },
   { href: '/decks', icon: 'style', label: 'Decks' },
   { href: '/profile', icon: 'person', label: 'Profile' },
-  { href: '/login', icon: 'settings', label: 'Settings' },
+  { href: '/settings', icon: 'settings', label: 'Settings' },
 ];
 
 export default function BottomNav() {

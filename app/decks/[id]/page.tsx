@@ -25,6 +25,7 @@ import {
   deleteDeck as deleteDeckFromSupabase,
   upsertDeck,
 } from "@/lib/supabase/decks";
+import { exportDeckAsJson } from "@/lib/import-export";
 
 // ── FSRS status ──────────────────────────────────────────────────────────────
 
@@ -308,6 +309,17 @@ export default function DeckDetailPage({
                   Edit Deck
                 </span>
               </Link>
+              <button
+                onClick={() => { setMenuOpen(false); exportDeckAsJson(deck, true); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left border-t border-primary/5"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant">
+                  download
+                </span>
+                <span className="font-label-md text-label-md text-on-surface">
+                  Export Deck
+                </span>
+              </button>
               <button
                 onClick={() => {
                   setMenuOpen(false);

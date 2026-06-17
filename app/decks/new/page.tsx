@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveCustomDeck, CustomDeck, CustomCard } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/client';
 import { upsertDeck } from '@/lib/supabase/decks';
+import { importFromJson, importFromCsv, importFromAnki } from '@/lib/import-export';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -20,6 +21,36 @@ export default function CreateDeckPage() {
   const [newArabic, setNewArabic] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      let importedDeck;
+      if (file.name.endsWith('.apkg')) {
+        const result = await importFromAnki(file);
+        importedDeck = result.decks[0];
+      } else if (file.name.match(/\.(csv|tsv)$/i)) {
+        importedDeck = await importFromCsv(file);
+      } else {
+        const result = await importFromJson(file);
+        importedDeck = result.deck;
+      }
+      if (importedDeck) {
+        setName(importedDeck.title);
+        setDescription(importedDeck.description);
+        setCards(importedDeck.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning })));
+      }
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const addCard = () => {
     if (!newArabic.trim() || !newMeaning.trim()) return;
@@ -77,6 +108,18 @@ export default function CreateDeckPage() {
           </button>
           <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary">Create Deck</h1>
         </div>
+        <button
+          onClick={() => importRef.current?.click()}
+          disabled={importing}
+          className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-primary/5 hover:bg-primary/10 text-primary font-label-md text-label-md transition-colors disabled:opacity-60"
+        >
+          {importing
+            ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+            : <span className="material-symbols-outlined text-[16px]">upload_file</span>
+          }
+          Import
+        </button>
+        <input ref={importRef} type="file" accept=".json,.csv,.tsv,.apkg" className="hidden" onChange={handleImport} />
       </header>
 
       <div className="pt-2 pb-32 px-container-margin space-y-lg">

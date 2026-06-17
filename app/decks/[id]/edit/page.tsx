@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
@@ -8,6 +8,7 @@ import { getCustomDeckById, saveCustomDeck, saveCardOverride, getAllCardOverride
 import { createClient } from '@/lib/supabase/client';
 import { fetchMyDecks, upsertDeck } from '@/lib/supabase/decks';
 import { SortBar, type SortMode } from '@/components/SortBar';
+import { importFromJson, importFromCsv, importFromAnki } from '@/lib/import-export';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -44,8 +45,39 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [editCard, setEditCard] = useState<{ id: string; arabic: string; meaning: string } | null>(null);
   const [editArabic, setEditArabic] = useState('');
   const [editMeaning, setEditMeaning] = useState('');
+  const [importing, setImporting] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      let importedCards: { id: string; arabic: string; meaning: string }[] = [];
+      if (file.name.endsWith('.apkg')) {
+        const result = await importFromAnki(file);
+        importedCards = result.decks.flatMap(d => d.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning })));
+      } else if (file.name.match(/\.(csv|tsv)$/i)) {
+        const deck = await importFromCsv(file);
+        importedCards = deck.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning }));
+      } else {
+        const result = await importFromJson(file);
+        importedCards = result.deck.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning }));
+      }
+      setCards(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newCards = importedCards.filter(c => !existingIds.has(c.id));
+        return [...prev, ...newCards];
+      });
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => {
     if (builtinDeck) {
@@ -185,6 +217,22 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
           </button>
           <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary">Edit Deck</h1>
         </div>
+        {isCustom && (
+          <>
+            <button
+              onClick={() => importRef.current?.click()}
+              disabled={importing}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-primary/5 hover:bg-primary/10 text-primary font-label-md text-label-md transition-colors disabled:opacity-60"
+            >
+              {importing
+                ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                : <span className="material-symbols-outlined text-[16px]">upload_file</span>
+              }
+              Import
+            </button>
+            <input ref={importRef} type="file" accept=".json,.csv,.tsv,.apkg" className="hidden" onChange={handleImport} />
+          </>
+        )}
       </header>
 
       <div className="pt-2 pb-32 px-container-margin space-y-lg">
