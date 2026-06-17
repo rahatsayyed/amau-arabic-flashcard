@@ -28,6 +28,7 @@ export interface UserProgress {
 
 const STORAGE_KEY = 'amau_progress';
 const LAST_DECK_KEY = 'amau_last_deck';
+const DAILY_GOAL_KEY = 'amau_daily_goal';
 
 function getProgress(): UserProgress {
   if (typeof window === 'undefined') return emptyProgress();
@@ -151,6 +152,16 @@ export function getMasteredCount(deckId: string): number {
 export function getDeckProgress(deckId: string, totalCards: number): number {
   const mastered = getMasteredCount(deckId);
   return totalCards > 0 ? Math.round((mastered / totalCards) * 100) : 0;
+}
+
+export function getDailyGoal(): number {
+  if (typeof window === 'undefined') return 20;
+  return parseInt(localStorage.getItem(DAILY_GOAL_KEY) ?? '20', 10);
+}
+
+export function saveDailyGoal(goal: number): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DAILY_GOAL_KEY, String(Math.max(5, Math.min(50, goal))));
 }
 
 export function getLastStudiedDeckId(): string | null {
