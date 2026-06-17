@@ -370,8 +370,8 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Edit card bottom drawer ──────────────────────────────────────────── */}
       {mounted && editCard && createPortal(
-        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end justify-center">
-          <div className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]">
+        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end justify-center" onClick={() => setEditCard(null)}>
+          <div className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center py-3 cursor-grab" onClick={() => setEditCard(null)}>
               <div className="w-10 h-1.5 bg-outline-variant rounded-full" />
             </div>

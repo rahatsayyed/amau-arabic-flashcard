@@ -1,9 +1,10 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
-import { getCustomDeckById, saveCustomDeck, CustomDeck } from '@/lib/storage';
+import { getCustomDeckById, saveCustomDeck, saveCardOverride, getAllCardOverrides, CustomDeck } from '@/lib/storage';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -20,12 +21,21 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [selectedIcon, setSelectedIcon] = useState('book_2');
   const [isPublic, setIsPublic] = useState(true);
   const [cards, setCards] = useState<{ id: string; arabic: string; meaning: string }[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, { arabic: string; meaning: string }>>({});
   const [loaded, setLoaded] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Add card inline
   const [showAddCard, setShowAddCard] = useState(false);
   const [newArabic, setNewArabic] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
+
+  // Edit card drawer
+  const [editCard, setEditCard] = useState<{ id: string; arabic: string; meaning: string } | null>(null);
+  const [editArabic, setEditArabic] = useState('');
+  const [editMeaning, setEditMeaning] = useState('');
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (builtinDeck) {
@@ -33,6 +43,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
       setDescription(builtinDeck.description ?? '');
       setSelectedIcon(builtinDeck.icon ?? 'book_2');
       setCards(builtinDeck.cards.slice(0, 80).map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning })));
+      setOverrides(getAllCardOverrides(id));
       setLoaded(true);
     } else {
       const cd = getCustomDeckById(id);
@@ -48,8 +59,6 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
     }
   }, [id, builtinDeck]);
 
-  const removeCard = (cardId: string) => setCards(prev => prev.filter(c => c.id !== cardId));
-
   const addCard = () => {
     if (!newArabic.trim() || !newMeaning.trim()) return;
     setCards(prev => [...prev, {
@@ -62,21 +71,47 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
     setShowAddCard(false);
   };
 
-  const handleSave = () => {
-    if (!name.trim() || !isCustom || !customDeck) {
-      router.back();
-      return;
+  const openEditCard = (card: { id: string; arabic: string; meaning: string }) => {
+    const ov = overrides[card.id];
+    setEditArabic(ov?.arabic ?? card.arabic);
+    setEditMeaning(ov?.meaning ?? card.meaning);
+    setEditCard(card);
+  };
+
+  const saveEdit = () => {
+    if (!editCard) return;
+    if (isCustom) {
+      setCards(prev => prev.map(c =>
+        c.id === editCard.id ? { ...c, arabic: editArabic, meaning: editMeaning } : c
+      ));
+    } else {
+      saveCardOverride(id, editCard.id, { arabic: editArabic, meaning: editMeaning });
+      setOverrides(prev => ({ ...prev, [editCard.id]: { arabic: editArabic, meaning: editMeaning } }));
+      setCards(prev => prev.map(c =>
+        c.id === editCard.id ? { ...c, arabic: editArabic, meaning: editMeaning } : c
+      ));
     }
-    const updated: CustomDeck = {
-      ...customDeck,
-      title: name.trim(),
-      description: description.trim(),
-      icon: selectedIcon,
-      isPublic,
-      cards: cards.map(c => ({ ...c, type: 'vocab' as const })),
-      updatedAt: new Date().toISOString(),
-    };
-    saveCustomDeck(updated);
+    setEditCard(null);
+  };
+
+  const removeCard = (cardId: string) => {
+    setCards(prev => prev.filter(c => c.id !== cardId));
+    setEditCard(null);
+  };
+
+  const handleSave = () => {
+    if (isCustom && customDeck) {
+      const updated: CustomDeck = {
+        ...customDeck,
+        title: name.trim(),
+        description: description.trim(),
+        icon: selectedIcon,
+        isPublic,
+        cards: cards.map(c => ({ ...c, type: 'vocab' as const })),
+        updatedAt: new Date().toISOString(),
+      };
+      saveCustomDeck(updated);
+    }
     router.back();
   };
 
@@ -194,19 +229,22 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
 
         {/* Cards section */}
         <section className="space-y-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-title-md text-title-md text-primary">
-              Cards ({totalCards})
-            </h2>
-            {isCustom && (
-              <button
-                onClick={() => setShowAddCard(true)}
-                className="font-label-md text-label-md text-secondary flex items-center gap-1 hover:underline active:scale-95 transition-transform"
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                Add Card
-              </button>
-            )}
+          <div className="flex items-center justify-between mb-md border-b border-primary/10 pb-2">
+            <h3 className="font-title-md text-title-md text-primary flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-primary-container rounded-full" />
+              Word List
+            </h3>
+            <div className="flex items-center gap-sm">
+              <span className="font-label-md text-label-md text-on-surface-variant">{totalCards} cards</span>
+              {isCustom && (
+                <button
+                  onClick={() => setShowAddCard(true)}
+                  className="font-label-md text-label-md text-secondary flex items-center gap-1 active:scale-95 transition-transform"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-sm">
@@ -247,38 +285,36 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {/* Card list */}
-            {cards.map(card => (
-              <div
-                key={card.id}
-                className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30 flex items-center gap-3 hover:border-outline transition-colors"
-              >
-                <div className="w-10 h-10 bg-primary-container/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-primary-container text-[20px]">translate</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-arabic-body text-arabic-body text-primary truncate" dir="rtl">{card.arabic}</p>
-                  <p className="font-label-md text-[12px] text-on-surface-variant truncate">{card.meaning}</p>
-                </div>
-                {isCustom && (
-                  <button
-                    onClick={() => removeCard(card.id)}
-                    className="p-2 text-outline hover:text-error transition-colors flex-shrink-0"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                  </button>
-                )}
-              </div>
-            ))}
+            {/* Card list — same tile as deck details, no FSRS indicator */}
+            {cards.map(card => {
+              const ov = overrides[card.id];
+              const arabic = ov?.arabic ?? card.arabic;
+              const meaning = ov?.meaning ?? card.meaning;
+              return (
+                <button
+                  key={card.id}
+                  onClick={() => openEditCard(card)}
+                  className="w-full bg-surface p-md rounded-xl border border-primary/5 flex items-center justify-between hover:bg-surface-container-lowest transition-colors text-left"
+                  style={{ boxShadow: '0 4px 12px rgba(23,54,59,0.04)' }}
+                >
+                  <div className="flex flex-col min-w-0 flex-1 mr-3">
+                    <span className="font-arabic-body text-arabic-body text-primary leading-tight truncate" dir="rtl">
+                      {arabic}
+                    </span>
+                  </div>
+                  <div className="text-right flex-shrink-0 max-w-[48%]">
+                    <span className="font-body-lg text-body-lg text-primary block truncate">{meaning}</span>
+                  </div>
+                </button>
+              );
+            })}
 
-            {/* Show truncation notice for built-in decks with many cards */}
             {!isCustom && (displayedDeck?.cards.length ?? 0) > 80 && (
               <p className="text-center font-label-md text-[12px] text-on-surface-variant py-2">
-                + {(displayedDeck?.cards.length ?? 0) - 80} more cards (read-only)
+                + {(displayedDeck?.cards.length ?? 0) - 80} more cards
               </p>
             )}
 
-            {/* Empty state */}
             {isCustom && cards.length === 0 && !showAddCard && (
               <button
                 onClick={() => setShowAddCard(true)}
@@ -296,8 +332,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] p-gutter bg-surface/90 backdrop-blur-md z-50 flex flex-col gap-sm">
         <button
           onClick={handleSave}
-          disabled={!name.trim() && isCustom}
-          className="w-full bg-secondary text-on-secondary font-bold py-4 rounded-xl shadow-lg hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+          className="w-full bg-secondary text-on-secondary font-bold py-4 rounded-xl shadow-lg hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined">save</span>
           Save Changes
@@ -309,6 +344,71 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
           Discard Changes
         </button>
       </div>
+
+      {/* Edit card bottom drawer — portal to escape phone shell */}
+      {mounted && editCard && createPortal(
+        <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end justify-center" onClick={() => setEditCard(null)}>
+          <div className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[60vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center py-3 cursor-grab" onClick={() => setEditCard(null)}>
+              <div className="w-10 h-1.5 bg-outline-variant rounded-full" />
+            </div>
+            <div className="px-container-margin pb-md overflow-y-auto">
+              <h3 className="font-title-md text-title-md text-primary mb-md">Edit Card</h3>
+              <div className="space-y-md mb-lg">
+                <div className="space-y-xs">
+                  <label className="block font-label-md text-label-md text-on-surface-variant">
+                    Arabic Word / Phrase
+                  </label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={editArabic}
+                    onChange={e => setEditArabic(e.target.value)}
+                    className="w-full h-14 px-4 rounded-xl border border-outline-variant bg-surface focus:border-secondary-container focus:ring-1 focus:ring-secondary-container outline-none transition-all font-arabic-body text-arabic-body"
+                    placeholder="e.g. مطار"
+                  />
+                </div>
+                <div className="space-y-xs">
+                  <label className="block font-label-md text-label-md text-on-surface-variant">
+                    English Translation
+                  </label>
+                  <input
+                    type="text"
+                    value={editMeaning}
+                    onChange={e => setEditMeaning(e.target.value)}
+                    className="w-full h-14 px-4 rounded-xl border border-outline-variant bg-surface focus:border-secondary-container focus:ring-1 focus:ring-secondary-container outline-none transition-all font-body-md text-body-md"
+                    placeholder="e.g. Airport"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-sm mb-sm">
+                <button
+                  onClick={() => setEditCard(null)}
+                  className="flex-1 h-14 rounded-xl font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 h-14 bg-secondary-container text-on-secondary rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all font-label-md text-label-md uppercase tracking-wider"
+                >
+                  Save
+                </button>
+              </div>
+              {isCustom && editCard && (
+                <button
+                  onClick={() => removeCard(editCard.id)}
+                  className="w-full h-10 flex items-center justify-center gap-2 text-error font-label-md text-label-md hover:bg-error-container/10 rounded-xl transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                  Remove Card
+                </button>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
