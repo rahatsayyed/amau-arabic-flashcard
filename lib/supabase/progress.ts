@@ -41,4 +41,5 @@ export function clearSyncedLocalData(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('amau_progress');
   localStorage.removeItem('amau_custom_decks');
+  localStorage.removeItem('amau_card_overrides');
 }

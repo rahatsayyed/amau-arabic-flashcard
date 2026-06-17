@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
 import { getCustomDeckById, saveCustomDeck, saveCardOverride, getAllCardOverrides, CustomDeck } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/client';
 import { fetchMyDecks, upsertDeck } from '@/lib/supabase/decks';
+import { SortBar, type SortMode } from '@/components/SortBar';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -28,10 +29,11 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [mounted, setMounted] = useState(false);
 
   // Sort
-  type SortMode = 'frequency' | 'alpha' | 'mastery';
   const [sortBy, setSortBy] = useState<SortMode>('frequency');
-  const [sortOpen, setSortOpen] = useState(false);
-  const sortRef = useRef<HTMLDivElement>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Pagination
+  const [visibleCount, setVisibleCount] = useState(20);
 
   // Add card inline
   const [showAddCard, setShowAddCard] = useState(false);
@@ -44,15 +46,6 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [editMeaning, setEditMeaning] = useState('');
 
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    if (!sortOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [sortOpen]);
 
   useEffect(() => {
     if (builtinDeck) {
@@ -160,17 +153,23 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const displayedDeck = builtinDeck ?? customDeck;
 
   const sortedCards = (() => {
+    let sorted: typeof cards;
     if (sortBy === 'alpha') {
-      return [...cards].sort((a, b) => {
+      sorted = [...cards].sort((a, b) => {
         const aAr = overrides[a.id]?.arabic ?? a.arabic;
         const bAr = overrides[b.id]?.arabic ?? b.arabic;
         return aAr.localeCompare(bAr, 'ar');
       });
+    } else if (sortBy === 'mastery') {
+      sorted = [...cards].sort((a, b) => {
+        const aMeaning = overrides[a.id]?.meaning ?? a.meaning;
+        const bMeaning = overrides[b.id]?.meaning ?? b.meaning;
+        return aMeaning.localeCompare(bMeaning);
+      });
+    } else {
+      sorted = [...cards];
     }
-    if (sortBy === 'mastery') {
-      return [...cards].sort((a, b) => a.arabic.localeCompare(b.arabic, 'ar'));
-    }
-    return cards;
+    return sortDir === 'desc' ? sorted.reverse() : sorted;
   })();
 
   return (
@@ -282,39 +281,12 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
               Word List
             </h3>
             <div className="flex items-center gap-sm">
-              {/* Sort dropdown */}
-              <div className="relative" ref={sortRef}>
-                <button
-                  onClick={() => setSortOpen(o => !o)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors active:scale-95 ${sortOpen ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
-                >
-                  <span className="material-symbols-outlined text-[18px] text-primary">sort</span>
-                  <span className="font-label-md text-label-md text-primary">
-                    {sortBy === 'frequency' ? 'Frequency' : sortBy === 'alpha' ? 'Alphabetical' : 'Mastery'}
-                  </span>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                    {sortOpen ? 'expand_less' : 'expand_more'}
-                  </span>
-                </button>
-                {sortOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
-                    {(['frequency', 'alpha', 'mastery'] as SortMode[]).map((opt, i) => (
-                      <button
-                        key={opt}
-                        onClick={() => { setSortBy(opt); setSortOpen(false); }}
-                        className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left ${i > 0 ? 'border-t border-primary/5' : ''} ${sortBy === opt ? 'bg-primary/5' : 'hover:bg-surface-container-low'}`}
-                      >
-                        <span className={`font-label-md text-label-md ${sortBy === opt ? 'text-primary' : 'text-on-surface'}`}>
-                          {opt === 'frequency' ? 'Frequency' : opt === 'alpha' ? 'Alphabetical' : 'Mastery Level'}
-                        </span>
-                        {sortBy === opt && (
-                          <span className="material-symbols-outlined text-secondary-container text-[18px]">check</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <SortBar
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSortByChange={mode => { setSortBy(mode); setVisibleCount(20); }}
+                onSortDirChange={setSortDir}
+              />
               {isCustom && (
                 <button
                   onClick={() => setShowAddCard(true)}
@@ -365,7 +337,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
             )}
 
             {/* Card list — same tile as deck details, no FSRS indicator */}
-            {sortedCards.map(card => {
+            {sortedCards.slice(0, visibleCount).map(card => {
               const ov = overrides[card.id];
               const arabic = ov?.arabic ?? card.arabic;
               const meaning = ov?.meaning ?? card.meaning;
@@ -387,12 +359,26 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
                 </button>
               );
             })}
-
-            {!isCustom && (displayedDeck?.cards.length ?? 0) > 80 && (
-              <p className="text-center font-label-md text-[12px] text-on-surface-variant py-2">
-                + {(displayedDeck?.cards.length ?? 0) - 80} more cards
-              </p>
-            )}
+            <div className="flex items-center justify-center gap-sm pt-1">
+              {visibleCount < sortedCards.length && (
+                <button
+                  onClick={() => setVisibleCount(c => Math.min(c + 20, sortedCards.length))}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:border-secondary hover:text-secondary transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                  Show {Math.min(20, sortedCards.length - visibleCount)} more
+                </button>
+              )}
+              {visibleCount > 20 && (
+                <button
+                  onClick={() => setVisibleCount(20)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">expand_less</span>
+                  Show less
+                </button>
+              )}
+            </div>
 
             {isCustom && cards.length === 0 && !showAddCard && (
               <button

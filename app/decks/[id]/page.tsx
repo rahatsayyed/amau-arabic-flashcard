@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import { SortBar, type SortMode } from "@/components/SortBar";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,37 +37,35 @@ function getCardStatus(state: number, stability: number): Status {
   return "mastered";
 }
 
-function StatusIndicator({ status }: { status: Status }) {
-  if (status === "new") {
-    return (
-      <span className="font-label-md text-label-md text-secondary-container">
-        New
-      </span>
-    );
-  }
-  if (status === "learning") {
-    return (
-      <div className="flex gap-0.5 justify-end mt-1">
-        <div className="w-2 h-2 rounded-full bg-secondary-container" />
-        <div className="w-2 h-2 rounded-full bg-secondary-container" />
-        <div className="w-2 h-2 rounded-full bg-primary/10" />
-      </div>
-    );
-  }
-  if (status === "reviewing") {
-    return (
-      <span className="font-label-md text-label-md text-on-tertiary-container">
-        Reviewing
-      </span>
-    );
-  }
+function getDueLabel(due: string | Date, state: number): string {
+  if (state === 0) return "";
+  const ms = new Date(due).getTime() - Date.now();
+  if (ms <= 0) return "due now";
+  const hours = ms / (1000 * 60 * 60);
+  if (hours < 24) return `in ${Math.round(hours)}h`;
+  const days = Math.ceil(hours / 24);
+  return days === 1 ? "tomorrow" : `in ${days}d`;
+}
+
+function StatusIndicator({ status, dueLabel }: { status: Status; dueLabel: string }) {
+  const statusConfig = {
+    new:       { label: "New",       color: "text-secondary-container" },
+    learning:  { label: "Learning",  color: "text-primary/60" },
+    reviewing: { label: "Reviewing", color: "text-on-tertiary-container" },
+    mastered:  { label: "Mastered",  color: "text-secondary-container" },
+  }[status];
+
   return (
-    <span
-      className="material-symbols-outlined text-secondary-container"
-      style={{ fontSize: "18px", fontVariationSettings: "'FILL' 1" }}
-    >
-      verified
-    </span>
+    <div className="flex flex-col items-end gap-0.5 mt-0.5">
+      <span className={`font-label-md text-[11px] leading-tight ${statusConfig.color}`}>
+        {statusConfig.label}
+      </span>
+      {dueLabel && (
+        <span className="font-label-md text-[10px] leading-tight text-on-surface-variant/60">
+          {dueLabel}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -90,6 +89,7 @@ export default function DeckDetailPage({
   // Stats
   const [progress, setProgress] = useState(0);
   const [cardStatuses, setCardStatuses] = useState<Record<string, Status>>({});
+  const [cardDueLabels, setCardDueLabels] = useState<Record<string, string>>({});
   const [overrides, setOverrides] = useState<
     Record<string, { arabic: string; meaning: string }>
   >({});
@@ -109,10 +109,8 @@ export default function DeckDetailPage({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Sort state
-  type SortMode = 'frequency' | 'alpha' | 'mastery';
   const [sortBy, setSortBy] = useState<SortMode>('frequency');
-  const [sortOpen, setSortOpen] = useState(false);
-  const sortRef = useRef<HTMLDivElement>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Pagination state
   const [visibleCount, setVisibleCount] = useState(20);
@@ -148,14 +146,14 @@ export default function DeckDetailPage({
     setOverrides(getAllCardOverrides(id));
 
     const statuses: Record<string, Status> = {};
-    for (const card of deck.cards.slice(0, 80)) {
+    const dueLabels: Record<string, string> = {};
+    for (const card of deck.cards) {
       const state = getCardState(id, card.id);
-      statuses[card.id] = getCardStatus(
-        state.card.state as number,
-        state.card.stability,
-      );
+      statuses[card.id] = getCardStatus(state.card.state as number, state.card.stability);
+      dueLabels[card.id] = getDueLabel(state.card.due, state.card.state as number);
     }
     setCardStatuses(statuses);
+    setCardDueLabels(dueLabels);
   }, [id, deck]);
 
   // Close menu on outside click
@@ -170,18 +168,10 @@ export default function DeckDetailPage({
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  // Close sort dropdown on outside click
-  useEffect(() => {
-    if (!sortOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [sortOpen]);
+  const maxGoal = deck?.cards.length ?? 50;
 
   const adjustGoal = (delta: number) => {
-    const next = Math.max(5, Math.min(50, dailyGoal + delta));
+    const next = Math.max(5, Math.min(maxGoal, dailyGoal + delta));
     setDailyGoalState(next);
     saveDailyGoal(next);
   };
@@ -259,21 +249,23 @@ export default function DeckDetailPage({
   const STATUS_ORDER: Record<string, number> = { new: 0, learning: 1, reviewing: 2, mastered: 3 };
   const sortedCards = (() => {
     const cards = deck.cards;
+    let sorted: typeof cards;
     if (sortBy === 'alpha') {
-      return [...cards].sort((a, b) => {
+      sorted = [...cards].sort((a, b) => {
         const aAr = overrides[a.id]?.arabic ?? a.arabic;
         const bAr = overrides[b.id]?.arabic ?? b.arabic;
         return aAr.localeCompare(bAr, 'ar');
       });
-    }
-    if (sortBy === 'mastery') {
-      return [...cards].sort((a, b) => {
+    } else if (sortBy === 'mastery') {
+      sorted = [...cards].sort((a, b) => {
         const aOrd = STATUS_ORDER[cardStatuses[a.id] ?? 'new'];
         const bOrd = STATUS_ORDER[cardStatuses[b.id] ?? 'new'];
         return aOrd - bOrd;
       });
+    } else {
+      sorted = [...cards];
     }
-    return cards;
+    return sortDir === 'desc' ? sorted.reverse() : sorted;
   })();
 
   return (
@@ -391,16 +383,16 @@ export default function DeckDetailPage({
               </div>
             </div>
           </div>
-          <div className="col-span-2 bg-surface-container-low p-md rounded-xl border border-primary/5 flex items-center justify-between">
-            <div>
+          <div className="col-span-2 bg-surface-container-low p-md rounded-xl border border-primary/5 flex items-center justify-between gap-sm">
+            <div className="min-w-0">
               <p className="font-label-md text-label-md text-on-surface-variant mb-xs">
-                Select Practice cards
+                Practice Cards
               </p>
-              <p className="font-title-md text-title-md text-primary">
-                {dailyGoal} Cards
+              <p className="font-label-md text-[11px] text-on-surface-variant/60">
+                Cards per session
               </p>
             </div>
-            <div className="flex items-center gap-sm">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => adjustGoal(-5)}
                 disabled={dailyGoal <= 5}
@@ -408,9 +400,21 @@ export default function DeckDetailPage({
               >
                 <span className="material-symbols-outlined">remove</span>
               </button>
+              <input
+                type="number"
+                value={dailyGoal}
+                min={5}
+                max={maxGoal}
+                onChange={e => {
+                  const v = Math.max(5, Math.min(maxGoal, Number(e.target.value) || 5));
+                  setDailyGoalState(v);
+                  saveDailyGoal(v);
+                }}
+                className="w-14 text-center font-title-md text-title-md text-primary bg-surface border border-outline-variant rounded-lg h-10 outline-none focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+              />
               <button
                 onClick={() => adjustGoal(5)}
-                disabled={dailyGoal >= 50}
+                disabled={dailyGoal >= maxGoal}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-primary/5 text-primary hover:bg-primary/10 active:scale-95 transition-all disabled:opacity-40"
               >
                 <span className="material-symbols-outlined">add</span>
@@ -422,12 +426,12 @@ export default function DeckDetailPage({
         {/* ── Start Studying ───────────────────────────────────────────────── */}
         <div className="mb-lg">
           <Link
-            href={`/decks/${id}/study`}
+            href={`/decks/${id}/study?goal=${dailyGoal}`}
             className="w-full h-14 bg-secondary-container text-on-secondary flex items-center justify-center gap-3 rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all duration-200 font-bold"
           >
             <span className="material-symbols-outlined">play_arrow</span>
             <span className="font-label-md text-label-md uppercase tracking-wider">
-              Start Studying
+              Study {dailyGoal} Cards
             </span>
           </Link>
         </div>
@@ -438,41 +442,12 @@ export default function DeckDetailPage({
             <span className="w-1.5 h-6 bg-primary-container rounded-full" />
             Word List
           </h3>
-          <div className="flex items-center gap-sm">
-            {/* Sort button */}
-            <div className="relative" ref={sortRef}>
-              <button
-                onClick={() => setSortOpen(o => !o)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors active:scale-95 ${sortOpen ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
-              >
-                <span className="material-symbols-outlined text-[18px] text-primary">sort</span>
-                <span className="font-label-md text-label-md text-primary">
-                  {sortBy === 'frequency' ? 'Frequency' : sortBy === 'alpha' ? 'Alphabetical' : 'Mastery'}
-                </span>
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                  {sortOpen ? 'expand_less' : 'expand_more'}
-                </span>
-              </button>
-              {sortOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
-                  {(['frequency', 'alpha', 'mastery'] as SortMode[]).map((opt, i) => (
-                    <button
-                      key={opt}
-                      onClick={() => { setSortBy(opt); setSortOpen(false); setVisibleCount(20); }}
-                      className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left ${i > 0 ? 'border-t border-primary/5' : ''} ${sortBy === opt ? 'bg-primary/5' : 'hover:bg-surface-container-low'}`}
-                    >
-                      <span className={`font-label-md text-label-md ${sortBy === opt ? 'text-primary' : 'text-on-surface'}`}>
-                        {opt === 'frequency' ? 'Frequency' : opt === 'alpha' ? 'Alphabetical' : 'Mastery Level'}
-                      </span>
-                      {sortBy === opt && (
-                        <span className="material-symbols-outlined text-secondary-container text-[18px]">check</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <SortBar
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSortByChange={mode => { setSortBy(mode); setVisibleCount(20); }}
+            onSortDirChange={setSortDir}
+          />
         </div>
 
         <div className="space-y-sm mb-md">
@@ -495,7 +470,7 @@ export default function DeckDetailPage({
                 </div>
                 <div className="text-right flex-shrink-0 max-w-[48%]">
                   <span className="font-body-lg text-body-lg text-primary block truncate">{meaning}</span>
-                  <StatusIndicator status={status} />
+                  <StatusIndicator status={status} dueLabel={cardDueLabels[card.id] ?? ''} />
                 </div>
               </button>
             );

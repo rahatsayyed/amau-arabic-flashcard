@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getDeckById } from '@/data/vocabulary';
 import { saveCardReview, getDueCards, getUserProgress } from '@/lib/storage';
@@ -21,6 +21,8 @@ interface SessionCard {
 export default function StudySessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionGoal = Math.max(5, Math.min(50, Number(searchParams.get('goal') ?? 20)));
   const deck = getDeckById(id);
 
   const [phase, setPhase] = useState<Phase>('loading');
@@ -34,7 +36,7 @@ export default function StudySessionPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!deck) return;
     const dueIds = getDueCards(id, deck.cards.map(c => c.id));
-    const shuffled = [...dueIds].sort(() => Math.random() - 0.5).slice(0, 20);
+    const shuffled = [...dueIds].sort(() => Math.random() - 0.5).slice(0, sessionGoal);
     const sessionCards: SessionCard[] = shuffled.map(cardId => {
       const card = deck.cards.find(c => c.id === cardId)!;
       return { cardId, arabic: card.arabic, meaning: card.meaning, category: deck.title };
