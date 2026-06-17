@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getUserProgress, getWeeklyActivity } from '@/lib/storage';
 import { DECKS } from '@/data/vocabulary';
 import { createClient } from '@/lib/supabase/client';
+import { clearSyncedLocalData } from '@/lib/supabase/progress';
 import type { User } from '@supabase/supabase-js';
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -39,6 +40,7 @@ export default function ProfilePage() {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
+    clearSyncedLocalData();
     setUser(null);
     setSigningOut(false);
     router.refresh();

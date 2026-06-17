@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
@@ -27,6 +27,12 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [loaded, setLoaded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Sort
+  type SortMode = 'frequency' | 'alpha' | 'mastery';
+  const [sortBy, setSortBy] = useState<SortMode>('frequency');
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
   // Add card inline
   const [showAddCard, setShowAddCard] = useState(false);
   const [newArabic, setNewArabic] = useState('');
@@ -38,6 +44,15 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   const [editMeaning, setEditMeaning] = useState('');
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sortOpen]);
 
   useEffect(() => {
     if (builtinDeck) {
@@ -143,7 +158,20 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
   }
 
   const displayedDeck = builtinDeck ?? customDeck;
-  const totalCards = isCustom ? cards.length : (displayedDeck?.cards.length ?? 0);
+
+  const sortedCards = (() => {
+    if (sortBy === 'alpha') {
+      return [...cards].sort((a, b) => {
+        const aAr = overrides[a.id]?.arabic ?? a.arabic;
+        const bAr = overrides[b.id]?.arabic ?? b.arabic;
+        return aAr.localeCompare(bAr, 'ar');
+      });
+    }
+    if (sortBy === 'mastery') {
+      return [...cards].sort((a, b) => a.arabic.localeCompare(b.arabic, 'ar'));
+    }
+    return cards;
+  })();
 
   return (
     <>
@@ -254,7 +282,39 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
               Word List
             </h3>
             <div className="flex items-center gap-sm">
-              <span className="font-label-md text-label-md text-on-surface-variant">{totalCards} cards</span>
+              {/* Sort dropdown */}
+              <div className="relative" ref={sortRef}>
+                <button
+                  onClick={() => setSortOpen(o => !o)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors active:scale-95 ${sortOpen ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
+                >
+                  <span className="material-symbols-outlined text-[18px] text-primary">sort</span>
+                  <span className="font-label-md text-label-md text-primary">
+                    {sortBy === 'frequency' ? 'Frequency' : sortBy === 'alpha' ? 'Alphabetical' : 'Mastery'}
+                  </span>
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                    {sortOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+                {sortOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
+                    {(['frequency', 'alpha', 'mastery'] as SortMode[]).map((opt, i) => (
+                      <button
+                        key={opt}
+                        onClick={() => { setSortBy(opt); setSortOpen(false); }}
+                        className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left ${i > 0 ? 'border-t border-primary/5' : ''} ${sortBy === opt ? 'bg-primary/5' : 'hover:bg-surface-container-low'}`}
+                      >
+                        <span className={`font-label-md text-label-md ${sortBy === opt ? 'text-primary' : 'text-on-surface'}`}>
+                          {opt === 'frequency' ? 'Frequency' : opt === 'alpha' ? 'Alphabetical' : 'Mastery Level'}
+                        </span>
+                        {sortBy === opt && (
+                          <span className="material-symbols-outlined text-secondary-container text-[18px]">check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {isCustom && (
                 <button
                   onClick={() => setShowAddCard(true)}
@@ -305,7 +365,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
             )}
 
             {/* Card list — same tile as deck details, no FSRS indicator */}
-            {cards.map(card => {
+            {sortedCards.map(card => {
               const ov = overrides[card.id];
               const arabic = ov?.arabic ?? card.arabic;
               const meaning = ov?.meaning ?? card.meaning;

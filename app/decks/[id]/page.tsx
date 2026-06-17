@@ -108,6 +108,15 @@ export default function DeckDetailPage({
   const [editMeaning, setEditMeaning] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Sort state
+  type SortMode = 'frequency' | 'alpha' | 'mastery';
+  const [sortBy, setSortBy] = useState<SortMode>('frequency');
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  // Pagination state
+  const [visibleCount, setVisibleCount] = useState(20);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -160,6 +169,16 @@ export default function DeckDetailPage({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
+
+  // Close sort dropdown on outside click
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sortOpen]);
 
   const adjustGoal = (delta: number) => {
     const next = Math.max(5, Math.min(50, dailyGoal + delta));
@@ -236,6 +255,26 @@ export default function DeckDetailPage({
 
   const vocabCards = deck.cards.filter((c) => c.type === "vocab");
   const sentenceCards = deck.cards.filter((c) => c.type === "sentence");
+
+  const STATUS_ORDER: Record<string, number> = { new: 0, learning: 1, reviewing: 2, mastered: 3 };
+  const sortedCards = (() => {
+    const cards = deck.cards;
+    if (sortBy === 'alpha') {
+      return [...cards].sort((a, b) => {
+        const aAr = overrides[a.id]?.arabic ?? a.arabic;
+        const bAr = overrides[b.id]?.arabic ?? b.arabic;
+        return aAr.localeCompare(bAr, 'ar');
+      });
+    }
+    if (sortBy === 'mastery') {
+      return [...cards].sort((a, b) => {
+        const aOrd = STATUS_ORDER[cardStatuses[a.id] ?? 'new'];
+        const bOrd = STATUS_ORDER[cardStatuses[b.id] ?? 'new'];
+        return aOrd - bOrd;
+      });
+    }
+    return cards;
+  })();
 
   return (
     <>
@@ -399,55 +438,88 @@ export default function DeckDetailPage({
             <span className="w-1.5 h-6 bg-primary-container rounded-full" />
             Word List
           </h3>
-          <span className="font-label-md text-label-md text-on-surface-variant">
-            {vocabCards.length} vocab
-            {sentenceCards.length > 0
-              ? ` · ${sentenceCards.length} sentences`
-              : ""}
-          </span>
+          <div className="flex items-center gap-sm">
+            {/* Sort button */}
+            <div className="relative" ref={sortRef}>
+              <button
+                onClick={() => setSortOpen(o => !o)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors active:scale-95 ${sortOpen ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
+              >
+                <span className="material-symbols-outlined text-[18px] text-primary">sort</span>
+                <span className="font-label-md text-label-md text-primary">
+                  {sortBy === 'frequency' ? 'Frequency' : sortBy === 'alpha' ? 'Alphabetical' : 'Mastery'}
+                </span>
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                  {sortOpen ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
+                  {(['frequency', 'alpha', 'mastery'] as SortMode[]).map((opt, i) => (
+                    <button
+                      key={opt}
+                      onClick={() => { setSortBy(opt); setSortOpen(false); setVisibleCount(20); }}
+                      className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left ${i > 0 ? 'border-t border-primary/5' : ''} ${sortBy === opt ? 'bg-primary/5' : 'hover:bg-surface-container-low'}`}
+                    >
+                      <span className={`font-label-md text-label-md ${sortBy === opt ? 'text-primary' : 'text-on-surface'}`}>
+                        {opt === 'frequency' ? 'Frequency' : opt === 'alpha' ? 'Alphabetical' : 'Mastery Level'}
+                      </span>
+                      {sortBy === opt && (
+                        <span className="material-symbols-outlined text-secondary-container text-[18px]">check</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-sm mb-md">
-          {deck.cards.slice(0, 80).map((card) => {
+          {sortedCards.slice(0, visibleCount).map(card => {
             const ov = overrides[card.id];
             const arabic = ov?.arabic ?? card.arabic;
             const meaning = ov?.meaning ?? card.meaning;
-            const status = cardStatuses[card.id] ?? "new";
+            const status = cardStatuses[card.id] ?? 'new';
             return (
               <button
                 key={card.id}
-                onClick={() =>
-                  openEditCard({
-                    id: card.id,
-                    arabic: card.arabic,
-                    meaning: card.meaning,
-                  })
-                }
+                onClick={() => openEditCard({ id: card.id, arabic: card.arabic, meaning: card.meaning })}
                 className="w-full bg-surface p-md rounded-xl border border-primary/5 flex items-center justify-between hover:bg-surface-container-lowest transition-colors text-left"
-                style={{ boxShadow: "0 4px 12px rgba(23,54,59,0.04)" }}
+                style={{ boxShadow: '0 4px 12px rgba(23,54,59,0.04)' }}
               >
                 <div className="flex flex-col min-w-0 flex-1 mr-3">
-                  <span
-                    className="font-arabic-body text-arabic-body text-primary leading-tight truncate"
-                    dir="rtl"
-                  >
+                  <span className="font-arabic-body text-arabic-body text-primary leading-tight truncate" dir="rtl">
                     {arabic}
                   </span>
                 </div>
                 <div className="text-right flex-shrink-0 max-w-[48%]">
-                  <span className="font-body-lg text-body-lg text-primary block truncate">
-                    {meaning}
-                  </span>
+                  <span className="font-body-lg text-body-lg text-primary block truncate">{meaning}</span>
                   <StatusIndicator status={status} />
                 </div>
               </button>
             );
           })}
-          {deck.cards.length > 80 && (
-            <p className="text-center font-label-md text-label-md text-on-surface-variant py-2">
-              + {deck.cards.length - 80} more cards
-            </p>
-          )}
+          <div className="flex items-center justify-center gap-sm pt-1">
+            {visibleCount < sortedCards.length && (
+              <button
+                onClick={() => setVisibleCount(c => Math.min(c + 20, sortedCards.length))}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:border-secondary hover:text-secondary transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                Show {Math.min(20, sortedCards.length - visibleCount)} more
+              </button>
+            )}
+            {visibleCount > 20 && (
+              <button
+                onClick={() => setVisibleCount(20)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-outline-variant font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">expand_less</span>
+                Show less
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
