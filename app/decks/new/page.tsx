@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveCustomDeck, CustomDeck, CustomCard } from '@/lib/storage';
+import { createClient } from '@/lib/supabase/client';
+import { upsertDeck } from '@/lib/supabase/decks';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -17,6 +19,7 @@ export default function CreateDeckPage() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [newArabic, setNewArabic] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const addCard = () => {
     if (!newArabic.trim() || !newMeaning.trim()) return;
@@ -32,8 +35,10 @@ export default function CreateDeckPage() {
 
   const removeCard = (id: string) => setCards(prev => prev.filter(c => c.id !== id));
 
-  const handleCreate = () => {
-    if (!name.trim()) return;
+  const handleCreate = async () => {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+
     const now = new Date().toISOString();
     const deck: CustomDeck = {
       id: `custom-${Date.now()}`,
@@ -45,7 +50,17 @@ export default function CreateDeckPage() {
       createdAt: now,
       updatedAt: now,
     };
-    saveCustomDeck(deck);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      await upsertDeck(deck);
+    } else {
+      saveCustomDeck(deck);
+    }
+
+    setSaving(false);
     router.replace(`/decks/${deck.id}`);
   };
 
@@ -167,7 +182,6 @@ export default function CreateDeckPage() {
               </div>
             ))}
 
-            {/* Add card inline form */}
             {showAddCard ? (
               <div className="p-sm bg-surface-container-low border border-secondary-container rounded-xl space-y-sm">
                 <input
@@ -219,11 +233,15 @@ export default function CreateDeckPage() {
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] p-gutter bg-surface/90 backdrop-blur-md z-50">
         <button
           onClick={handleCreate}
-          disabled={!name.trim()}
+          disabled={!name.trim() || saving}
           className="w-full bg-secondary text-on-secondary font-bold py-4 rounded-xl shadow-lg shadow-secondary/20 hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
         >
-          <span className="material-symbols-outlined">add_circle</span>
-          Create Deck
+          {saving ? (
+            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+          ) : (
+            <span className="material-symbols-outlined">add_circle</span>
+          )}
+          {saving ? 'Saving…' : 'Create Deck'}
         </button>
       </div>
     </>

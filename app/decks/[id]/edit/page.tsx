@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { getDeckById } from '@/data/vocabulary';
 import { getCustomDeckById, saveCustomDeck, saveCardOverride, getAllCardOverrides, CustomDeck } from '@/lib/storage';
+import { createClient } from '@/lib/supabase/client';
+import { fetchMyDecks, upsertDeck } from '@/lib/supabase/decks';
 
 const ICONS = ['book_2', 'auto_stories', 'translate', 'forum', 'palette'];
 
@@ -46,16 +48,27 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
       setOverrides(getAllCardOverrides(id));
       setLoaded(true);
     } else {
-      const cd = getCustomDeckById(id);
-      if (cd) {
-        setCustomDeck(cd);
-        setName(cd.title);
-        setDescription(cd.description);
-        setSelectedIcon(cd.icon);
-        setIsPublic(cd.isPublic);
-        setCards(cd.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning })));
-        setLoaded(true);
+      async function loadCustom() {
+        // Try Supabase first if logged in
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        let cd: CustomDeck | undefined;
+        if (user) {
+          const decks = await fetchMyDecks();
+          cd = decks.find(d => d.id === id);
+        }
+        cd = cd ?? getCustomDeckById(id);
+        if (cd) {
+          setCustomDeck(cd);
+          setName(cd.title);
+          setDescription(cd.description);
+          setSelectedIcon(cd.icon);
+          setIsPublic(cd.isPublic);
+          setCards(cd.cards.map(c => ({ id: c.id, arabic: c.arabic, meaning: c.meaning })));
+          setLoaded(true);
+        }
       }
+      loadCustom();
     }
   }, [id, builtinDeck]);
 
@@ -99,7 +112,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
     setEditCard(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (isCustom && customDeck) {
       const updated: CustomDeck = {
         ...customDeck,
@@ -110,7 +123,13 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
         cards: cards.map(c => ({ ...c, type: 'vocab' as const })),
         updatedAt: new Date().toISOString(),
       };
-      saveCustomDeck(updated);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await upsertDeck(updated);
+      } else {
+        saveCustomDeck(updated);
+      }
     }
     router.back();
   };

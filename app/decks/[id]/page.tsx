@@ -18,6 +18,8 @@ import {
   CustomDeck,
   CustomCard,
 } from '@/lib/storage';
+import { createClient } from '@/lib/supabase/client';
+import { fetchMyDecks, deleteDeck as deleteDeckFromSupabase, upsertDeck } from '@/lib/supabase/decks';
 
 // ── FSRS status ──────────────────────────────────────────────────────────────
 
@@ -87,8 +89,18 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    const cd = getCustomDeckById(id);
-    if (cd) setCustomDeck(cd);
+    async function loadCustomDeck() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const decks = await fetchMyDecks();
+        const found = decks.find(d => d.id === id);
+        if (found) { setCustomDeck(found); return; }
+      }
+      const cd = getCustomDeckById(id);
+      if (cd) setCustomDeck(cd);
+    }
+    loadCustomDeck();
   }, [id]);
 
   useEffect(() => {
@@ -123,8 +135,14 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
     saveDailyGoal(next);
   };
 
-  const handleDelete = () => {
-    deleteCustomDeck(id);
+  const handleDelete = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await deleteDeckFromSupabase(id);
+    } else {
+      deleteCustomDeck(id);
+    }
     router.replace('/decks');
   };
 
@@ -135,10 +153,9 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
     setEditCard(card);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editCard) return;
     if (isCustom && customDeck) {
-      // Update the card in the custom deck
       const updated: CustomDeck = {
         ...customDeck,
         cards: customDeck.cards.map(c =>
@@ -146,7 +163,13 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
         ),
         updatedAt: new Date().toISOString(),
       };
-      saveCustomDeck(updated);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await upsertDeck(updated);
+      } else {
+        saveCustomDeck(updated);
+      }
       setCustomDeck(updated);
     } else {
       saveCardOverride(id, editCard.id, { arabic: editArabic, meaning: editMeaning });

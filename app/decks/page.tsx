@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DECKS } from '@/data/vocabulary';
 import { getDeckProgress, getCustomDecks, CustomDeck } from '@/lib/storage';
+import { createClient } from '@/lib/supabase/client';
+import { fetchMyDecks } from '@/lib/supabase/decks';
 
 const BUILTIN_ICONS: Record<string, string> = {
   'names-of-allah': 'auto_awesome',
@@ -17,18 +19,34 @@ const BUILTIN_ICONS: Record<string, string> = {
 export default function DecksPage() {
   const [deckProgress, setDeckProgress] = useState<Record<string, number>>({});
   const [customDecks, setCustomDecks] = useState<CustomDeck[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const cd = getCustomDecks();
-    setCustomDecks(cd);
-    const dp: Record<string, number> = {};
-    for (const deck of DECKS) {
-      dp[deck.id] = getDeckProgress(deck.id, deck.cards.length);
+    const supabase = createClient();
+
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+
+      let cd: CustomDeck[];
+      if (user) {
+        cd = await fetchMyDecks();
+      } else {
+        cd = getCustomDecks();
+      }
+      setCustomDecks(cd);
+
+      const dp: Record<string, number> = {};
+      for (const deck of DECKS) {
+        dp[deck.id] = getDeckProgress(deck.id, deck.cards.length);
+      }
+      for (const deck of cd) {
+        dp[deck.id] = getDeckProgress(deck.id, deck.cards.length);
+      }
+      setDeckProgress(dp);
     }
-    for (const deck of cd) {
-      dp[deck.id] = getDeckProgress(deck.id, deck.cards.length);
-    }
-    setDeckProgress(dp);
+
+    load();
   }, []);
 
   const totalDecks = DECKS.length + customDecks.length;
@@ -51,12 +69,12 @@ export default function DecksPage() {
         </div>
         <h1 className="font-headline-lg text-headline-lg text-on-primary mb-xs">Your Library</h1>
         <p className="font-label-md text-label-md text-on-primary-container opacity-80 uppercase tracking-widest">
-          Master your Arabic collection
+          {isLoggedIn ? 'Synced with your account' : 'Master your Arabic collection'}
         </p>
       </div>
 
       <div className="px-container-margin pb-md">
-        {/* Floating action buttons overlapping hero */}
+        {/* Floating action buttons */}
         <div className="-mt-8 mb-md grid grid-cols-2 gap-gutter relative z-10">
           <button className="pressable-btn flex items-center justify-center gap-2 bg-surface text-primary border border-primary/10 py-3 px-4 rounded-xl font-label-md text-label-md tonal-elevation">
             <span className="material-symbols-outlined text-[20px]">explore</span>
