@@ -123,14 +123,14 @@ export default function SettingsPage() {
         {/* ── Data Management ──────────────────────────────────────────────── */}
         <SectionLabel>Data Management</SectionLabel>
         <div className="bg-surface rounded-2xl shadow-sm border border-primary-container/10 mb-md overflow-hidden">
-          <Link href="/data" className="flex items-center justify-between px-md py-3 border-b border-primary/5 hover:bg-surface-container-low transition-colors">
+          <Link href="/data?tab=import" className="flex items-center justify-between px-md py-3 border-b border-primary/5 hover:bg-surface-container-low transition-colors">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant">upload_file</span>
               <span className="font-body-md text-body-md text-on-surface">Import Decks</span>
             </div>
             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">chevron_right</span>
           </Link>
-          <Link href="/data" className="flex items-center justify-between px-md py-3 hover:bg-surface-container-low transition-colors">
+          <Link href="/data?tab=export" className="flex items-center justify-between px-md py-3 hover:bg-surface-container-low transition-colors">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-[20px] text-on-surface-variant">download</span>
               <span className="font-body-md text-body-md text-on-surface">Export Decks</span>

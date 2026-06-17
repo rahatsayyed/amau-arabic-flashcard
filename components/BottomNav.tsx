@@ -10,13 +10,19 @@ const NAV_ITEMS = [
   { href: '/settings', icon: 'settings', label: 'Settings' },
 ];
 
+// Only these top-level routes show the bottom nav
+const NAV_ROOTS = new Set(['/', '/decks', '/profile', '/settings']);
+
 export default function BottomNav() {
   const pathname = usePathname();
+
+  // Hide on any sub-page (pages with a back button)
+  if (!NAV_ROOTS.has(pathname)) return null;
 
   return (
     <nav className="w-full flex justify-around items-center px-2 py-3 bg-surface shadow-lg rounded-t-xl border-t border-surface-container-high flex-shrink-0">
       {NAV_ITEMS.map(item => {
-        const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+        const active = pathname === item.href;
         return (
           <Link
             key={item.href}

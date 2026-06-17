@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   exportAllAsZip,
   exportProgressAsJson,
@@ -19,7 +19,21 @@ import type { CustomDeck } from '@/lib/storage';
 type ToastKind = 'success' | 'error';
 
 export default function DataManagementPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <span className="material-symbols-outlined text-primary text-[48px] animate-spin">progress_activity</span>
+      </div>
+    }>
+      <DataManagementContent />
+    </Suspense>
+  );
+}
+
+function DataManagementContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') as 'import' | 'export' | null;
   const [customDecks, setCustomDecks] = useState<CustomDeck[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [toast, setToast] = useState<{ msg: string; kind: ToastKind } | null>(null);
@@ -139,55 +153,59 @@ export default function DataManagementPage() {
             <span className="material-symbols-outlined text-on-primary" style={{ fontSize: 180, fontVariationSettings: "'FILL' 1" }}>sync</span>
           </div>
           <p className="font-label-md text-label-md text-on-primary/60 uppercase tracking-widest mb-1">Infrastructure</p>
-          <h2 className="font-headline-lg text-headline-lg text-on-primary mb-sm leading-tight">Synchronize Your Legacy</h2>
+          <h2 className="font-headline-lg text-headline-lg text-on-primary mb-sm leading-tight">
+            {tab === 'export' ? 'Export Your Library' : 'Synchronize Your Legacy'}
+          </h2>
           <p className="font-body-md text-label-md text-on-primary/70 leading-relaxed">
-            Safety check. Importing data will merge with your current collection. Your existing flashcards and progress records will be preserved.
+            {tab === 'export'
+              ? 'Download your decks and progress for backup or transfer to another device.'
+              : 'Safety check. Importing data will merge with your current collection. Your existing flashcards and progress records will be preserved.'}
           </p>
         </div>
 
         {/* ── Import Library ─────────────────────────────────────────────── */}
-        <SectionHeader icon="upload_file" label="Import Library" />
+        {tab !== 'export' && (
+          <>
+            <SectionHeader icon="upload_file" label="Import Library" />
+            <div className="space-y-sm mb-md">
+              <ImportCard
+                icon="data_object"
+                title="Import from Backup"
+                subtitle="Restore a deck or full backup exported from this app (.amau.json)"
+                loading={loading === 'json'}
+                onImport={() => jsonRef.current?.click()}
+                accept=".json"
+              />
+              <input ref={jsonRef} type="file" accept=".json" className="hidden" onChange={handleJsonImport} />
 
-        <div className="space-y-sm mb-md">
-          {/* JSON import */}
-          <ImportCard
-            icon="data_object"
-            title="Import from Backup"
-            subtitle="Restore a deck or full backup exported from this app (.amau.json)"
-            loading={loading === 'json'}
-            onImport={() => jsonRef.current?.click()}
-            accept=".json"
-          />
-          <input ref={jsonRef} type="file" accept=".json" className="hidden" onChange={handleJsonImport} />
+              <ImportCard
+                icon="table_chart"
+                title="Import from Spreadsheet"
+                subtitle="CSV or TSV file with Arabic and English columns. Column order is auto-detected."
+                loading={loading === 'csv'}
+                onImport={() => csvRef.current?.click()}
+                accept=".csv,.tsv"
+              />
+              <input ref={csvRef} type="file" accept=".csv,.tsv" className="hidden" onChange={handleCsvImport} />
 
-          {/* CSV import */}
-          <ImportCard
-            icon="table_chart"
-            title="Import from Spreadsheet"
-            subtitle="CSV or TSV file with Arabic and English columns. Column order is auto-detected."
-            loading={loading === 'csv'}
-            onImport={() => csvRef.current?.click()}
-            accept=".csv,.tsv"
-          />
-          <input ref={csvRef} type="file" accept=".csv,.tsv" className="hidden" onChange={handleCsvImport} />
-
-          {/* Anki import */}
-          <ImportCard
-            icon="style"
-            title="Import from Anki"
-            subtitle="Designed for .apkg files. Deck hierarchy, card content, and learning progress are all imported."
-            loading={loading === 'anki'}
-            onImport={() => ankiRef.current?.click()}
-            accept=".apkg"
-            badge="Anki"
-          />
-          <input ref={ankiRef} type="file" accept=".apkg" className="hidden" onChange={handleAnkiImport} />
-        </div>
+              <ImportCard
+                icon="style"
+                title="Import from Anki"
+                subtitle="Designed for .apkg files. Deck hierarchy, card content, and learning progress are all imported."
+                loading={loading === 'anki'}
+                onImport={() => ankiRef.current?.click()}
+                accept=".apkg"
+                badge="Anki"
+              />
+              <input ref={ankiRef} type="file" accept=".apkg" className="hidden" onChange={handleAnkiImport} />
+            </div>
+          </>
+        )}
 
         {/* ── Export Library ─────────────────────────────────────────────── */}
-        <SectionHeader icon="download" label="Export Library" />
+        {tab !== 'import' && <SectionHeader icon="download" label="Export Library" />}
 
-        <div className="space-y-sm mb-md">
+        {tab !== 'import' && <div className="space-y-sm mb-md">
           {/* Complete archive */}
           <div className="bg-surface rounded-xl border border-primary/5 p-md" style={{ boxShadow: '0 4px 12px rgba(23,54,59,0.04)' }}>
             <div className="flex items-start gap-3 mb-md">
@@ -246,7 +264,7 @@ export default function DataManagementPage() {
               <p className="font-label-md text-[11px] text-on-surface-variant">Stored locally{isLoggedIn ? ' & synced to cloud' : ''}</p>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Toast */}
