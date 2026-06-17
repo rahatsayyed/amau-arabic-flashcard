@@ -1,26 +1,183 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* ── Colors ───────────────────────────────── */
+  --color-primary:                   #002125;
+  --color-on-primary:                #ffffff;
+  --color-primary-container:         #17363b;
+  --color-on-primary-container:      #809fa5;
+  --color-primary-fixed:             #c8e8ee;
+  --color-primary-fixed-dim:         #acccd2;
+  --color-on-primary-fixed:          #001f24;
+  --color-on-primary-fixed-variant:  #2d4b51;
+  --color-inverse-primary:           #acccd2;
+
+  --color-secondary:                   #b32914;
+  --color-on-secondary:                #ffffff;
+  --color-secondary-container:         #fd5e43;
+  --color-on-secondary-container:      #5e0700;
+  --color-secondary-fixed:             #ffdad3;
+  --color-secondary-fixed-dim:         #ffb4a6;
+  --color-on-secondary-fixed:          #3f0300;
+  --color-on-secondary-fixed-variant:  #8f1000;
+
+  --color-tertiary:                   #301600;
+  --color-on-tertiary:                #ffffff;
+  --color-tertiary-container:         #4f2700;
+  --color-on-tertiary-container:      #c98c5a;
+  --color-tertiary-fixed:             #ffdcc3;
+  --color-tertiary-fixed-dim:         #fcb882;
+  --color-on-tertiary-fixed:          #2f1500;
+  --color-on-tertiary-fixed-variant:  #693b10;
+
+  --color-error:               #ba1a1a;
+  --color-on-error:            #ffffff;
+  --color-error-container:     #ffdad6;
+  --color-on-error-container:  #93000a;
+
+  --color-surface:                   #fbf9f4;
+  --color-on-surface:                #1b1c19;
+  --color-surface-variant:           #e4e2dd;
+  --color-on-surface-variant:        #414849;
+  --color-surface-bright:            #fbf9f4;
+  --color-surface-dim:               #dbdad5;
+  --color-surface-tint:              #456369;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #f5f3ee;
+  --color-surface-container:         #f0eee9;
+  --color-surface-container-high:    #eae8e3;
+  --color-surface-container-highest: #e4e2dd;
+  --color-inverse-surface:           #30312e;
+  --color-inverse-on-surface:        #f2f1ec;
+
+  --color-background:     #fbf9f4;
+  --color-on-background:  #1b1c19;
+  --color-outline:         #71787a;
+  --color-outline-variant: #c1c8c9;
+
+  /* ── Spacing ─────────────────────────────── */
+  --spacing-xs:               4px;
+  --spacing-sm:               12px;
+  --spacing-md:               24px;
+  --spacing-lg:               40px;
+  --spacing-xl:               64px;
+  --spacing-base:             8px;
+  --spacing-gutter:           16px;
+  --spacing-container-margin: 20px;
+
+  /* ── Font families (linked to next/font vars) ── */
+  --font-headline-lg-mobile: var(--font-source-serif), "Source Serif 4", serif;
+  --font-headline-lg:        var(--font-source-serif), "Source Serif 4", serif;
+  --font-display-lg:         var(--font-source-serif), "Source Serif 4", serif;
+  --font-title-md:           var(--font-source-serif), "Source Serif 4", serif;
+  --font-body-md:            var(--font-be-vietnam), "Be Vietnam Pro", ui-sans-serif;
+  --font-body-lg:            var(--font-be-vietnam), "Be Vietnam Pro", ui-sans-serif;
+  --font-label-md:           var(--font-be-vietnam), "Be Vietnam Pro", ui-sans-serif;
+  --font-arabic-display:     var(--font-noto-serif), "Noto Serif", serif;
+  --font-arabic-body:        var(--font-noto-serif), "Noto Serif", serif;
+
+  /* ── Font sizes (with line-height + weight) ─ */
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 48px;
+  --text-display-lg--font-weight: 700;
+  --text-display-lg--letter-spacing: -0.02em;
+
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 40px;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-lg-mobile: 28px;
+  --text-headline-lg-mobile--line-height: 36px;
+  --text-headline-lg-mobile--font-weight: 600;
+
+  --text-title-md: 20px;
+  --text-title-md--line-height: 28px;
+  --text-title-md--font-weight: 600;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--font-weight: 600;
+  --text-label-md--letter-spacing: 0.05em;
+
+  --text-arabic-display: 48px;
+  --text-arabic-display--line-height: 72px;
+
+  --text-arabic-body: 24px;
+  --text-arabic-body--line-height: 44px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Global resets ───────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Material Symbols ────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ── Tonal elevation (lifted card shadow) ─────── */
+.tonal-elevation {
+  box-shadow: 0 4px 12px rgba(23, 54, 59, 0.06);
+}
+
+/* ── Pressable button (tactile feel) ─────────── */
+.pressable-btn {
+  border-bottom: 3px solid rgba(0, 0, 0, 0.2);
+  transition: all 0.1s ease;
+}
+.pressable-btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+/* ── Flip card ────────────────────────────────── */
+.flip-card-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip-card-active .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-front,
+.flip-card-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* ── Subtle dot background (study screen) ─────── */
+.subtle-pattern {
+  background-color: #fbf9f4;
+  background-image: radial-gradient(#e4e2dd 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
+}
+
+/* ── Arabic text ─────────────────────────────── */
+.arabic-text {
+  direction: rtl;
+}
+.arabic-glow {
+  text-shadow: 0 0 20px rgba(23, 54, 59, 0.12);
+}
+
+/* ── Bar chart animation ──────────────────────── */
+@keyframes bar-grow {
+  from { height: 0; }
+  to   { height: var(--bar-h); }
+}
+.animate-bar {
+  animation: bar-grow 0.9s ease-out forwards;
 }
