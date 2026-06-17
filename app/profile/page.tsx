@@ -38,14 +38,11 @@ export default function ProfilePage() {
 
       {/* Hero extends from header */}
       <div className="bg-primary-container -mt-px pb-12 px-container-margin flex flex-col items-center rounded-b-[40px] shadow-lg">
-        <div className="relative mt-sm mb-sm">
-          <div className="w-24 h-24 rounded-full border-4 border-on-secondary-container bg-surface shadow-md flex items-center justify-center">
+        <div className="mt-sm mb-sm">
+          <div className="w-24 h-24 rounded-full border-4 border-on-secondary-fixed-variant bg-surface shadow-md flex items-center justify-center">
             <span className="material-symbols-outlined text-primary-container text-[52px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               person
             </span>
-          </div>
-          <div className="absolute bottom-0 right-0 bg-secondary text-on-secondary px-2 py-0.5 rounded-full font-label-md text-[11px] shadow-sm">
-            FREE
           </div>
         </div>
         <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-on-primary mb-1">Arabic Learner</h2>

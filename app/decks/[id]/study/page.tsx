@@ -60,12 +60,16 @@ export default function StudySessionPage({ params }: { params: Promise<{ id: str
     saveCardReview(id, card.cardId, rating as Rating, fsrs);
     if (rating >= 3) setCorrect(c => c + 1);
     setReviewed(r => r + 1);
+    // Flip card back to front first, then swap content at the midpoint of the
+    // 600ms animation so the new card's answer is never visible during the turn.
     setFlipped(false);
-    if (current + 1 >= queue.length) {
-      setPhase('done');
-    } else {
-      setCurrent(c => c + 1);
-    }
+    setTimeout(() => {
+      if (current + 1 >= queue.length) {
+        setPhase('done');
+      } else {
+        setCurrent(c => c + 1);
+      }
+    }, 300);
   };
 
   if (!deck) {

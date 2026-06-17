@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DECKS } from '@/data/vocabulary';
-import { getUserProgress, getDeckProgress } from '@/lib/storage';
+import { getUserProgress, getDeckProgress, getLastStudiedDeckId } from '@/lib/storage';
 
 const ICONS_MAP: Record<string, string> = {
   'names-of-allah': 'auto_awesome',
@@ -25,6 +25,7 @@ function getGreeting(): string {
 export default function HomePage() {
   const [progress, setProgress] = useState({ streak: 0, totalCardsReviewed: 0 });
   const [deckProgress, setDeckProgress] = useState<Record<string, number>>({});
+  const [featuredDeckId, setFeaturedDeckId] = useState(DECKS[0].id);
 
   useEffect(() => {
     const p = getUserProgress();
@@ -34,10 +35,12 @@ export default function HomePage() {
       dp[deck.id] = getDeckProgress(deck.id, deck.cards.length);
     }
     setDeckProgress(dp);
+    const lastId = getLastStudiedDeckId();
+    if (lastId && DECKS.find(d => d.id === lastId)) setFeaturedDeckId(lastId);
   }, []);
 
-  const featuredDeck = DECKS[0];
-  const otherDecks = DECKS.slice(1);
+  const featuredDeck = DECKS.find(d => d.id === featuredDeckId) ?? DECKS[0];
+  const otherDecks = DECKS.filter(d => d.id !== featuredDeck.id).slice(0, 4);
 
   return (
     <>
@@ -85,7 +88,7 @@ export default function HomePage() {
           <div className="bg-primary-container text-on-primary rounded-xl p-md overflow-hidden relative tonal-elevation">
             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary opacity-10 blur-3xl rounded-full -mr-16 -mt-16" />
             <div className="relative z-10">
-              <span className="font-label-md text-label-md bg-white/10 px-3 py-1 rounded-full uppercase">
+              <span className="text-[10px] font-bold tracking-widest bg-white/10 px-2 py-1 rounded-full uppercase">
                 Featured Deck
               </span>
               <h2 className="font-headline-lg-mobile text-headline-lg-mobile mt-sm">{featuredDeck.title}</h2>

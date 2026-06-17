@@ -27,6 +27,7 @@ export interface UserProgress {
 }
 
 const STORAGE_KEY = 'amau_progress';
+const LAST_DECK_KEY = 'amau_last_deck';
 
 function getProgress(): UserProgress {
   if (typeof window === 'undefined') return emptyProgress();
@@ -85,6 +86,11 @@ export function saveCardReview(
   };
 
   p.totalCardsReviewed += 1;
+
+  // Track last studied deck for home screen "current deck"
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LAST_DECK_KEY, deckId);
+  }
 
   const today = now.toISOString().split('T')[0];
   p.activityByDay[today] = (p.activityByDay[today] ?? 0) + 1;
@@ -145,6 +151,11 @@ export function getMasteredCount(deckId: string): number {
 export function getDeckProgress(deckId: string, totalCards: number): number {
   const mastered = getMasteredCount(deckId);
   return totalCards > 0 ? Math.round((mastered / totalCards) * 100) : 0;
+}
+
+export function getLastStudiedDeckId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(LAST_DECK_KEY);
 }
 
 export function getWeeklyActivity(): number[] {

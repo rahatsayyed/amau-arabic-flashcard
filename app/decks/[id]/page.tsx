@@ -86,6 +86,17 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
+        {/* Start Studying — above word list, per Stitch design */}
+        <div className="mb-lg">
+          <Link
+            href={`/decks/${id}/study`}
+            className="w-full h-14 bg-secondary-container text-on-secondary flex items-center justify-center gap-sm rounded-xl shadow-lg border-b-4 border-secondary hover:scale-[1.02] active:scale-95 transition-all duration-200 font-label-md text-label-md"
+          >
+            <span className="material-symbols-outlined">play_arrow</span>
+            <span className="uppercase tracking-wider">Start Studying</span>
+          </Link>
+        </div>
+
         {/* Section header */}
         <div className="flex items-center justify-between mb-sm border-b border-primary/10 pb-2">
           <h3 className="font-title-md text-title-md text-primary flex items-center gap-2">
@@ -132,14 +143,6 @@ export default function DeckDetailPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
 
-        {/* Study CTA */}
-        <Link
-          href={`/decks/${id}/study`}
-          className="w-full h-14 bg-secondary text-on-secondary flex items-center justify-center gap-sm rounded-xl font-label-md text-label-md pressable-btn"
-        >
-          <span className="material-symbols-outlined">play_arrow</span>
-          <span>START STUDYING</span>
-        </Link>
       </div>
     </>
   );
