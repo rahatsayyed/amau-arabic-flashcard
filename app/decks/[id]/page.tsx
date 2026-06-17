@@ -366,7 +366,7 @@ export default function DeckDetailPage({
         </section>
 
         {/* ── Stats bento ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-sm mb-lg">
+        <div className="grid grid-cols-2 gap-sm mb-sm">
           <div className="bg-surface-container-low p-md rounded-xl border border-primary/5">
             <p className="font-label-md text-label-md text-on-surface-variant mb-xs">
               CARDS
@@ -394,7 +394,7 @@ export default function DeckDetailPage({
           <div className="col-span-2 bg-surface-container-low p-md rounded-xl border border-primary/5 flex items-center justify-between">
             <div>
               <p className="font-label-md text-label-md text-on-surface-variant mb-xs">
-                DAILY GOAL
+                Select Practice cards
               </p>
               <p className="font-title-md text-title-md text-primary">
                 {dailyGoal} Cards

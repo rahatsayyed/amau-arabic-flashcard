@@ -4,7 +4,8 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getDeckById } from '@/data/vocabulary';
-import { saveCardReview, getDueCards } from '@/lib/storage';
+import { saveCardReview, getDueCards, getUserProgress } from '@/lib/storage';
+import { saveProgressToCloud } from '@/lib/supabase/progress';
 import { fsrs, Rating, formatInterval } from '@/lib/fsrs';
 import { createEmptyCard } from 'ts-fsrs';
 
@@ -52,6 +53,12 @@ export default function StudySessionPage({ params }: { params: Promise<{ id: str
       formatInterval(record[Rating.Easy].card.scheduled_days || 4),
     ]);
   }, [current, queue, deck]);
+
+  // Background cloud sync when session ends
+  useEffect(() => {
+    if (phase !== 'done') return;
+    saveProgressToCloud(getUserProgress()).catch(() => {});
+  }, [phase]);
 
   const handleFlip = () => setFlipped(f => !f);
 
