@@ -7,14 +7,15 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { clearSyncedLocalData } from '@/lib/supabase/progress';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { useTheme } from '@/components/ThemeProvider';
 import type { User } from '@supabase/supabase-js';
 
 type TextSize = 'small' | 'medium' | 'large';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
   const [textSize, setTextSize] = useState<TextSize>('medium');
   const [signingOut, setSigningOut] = useState(false);
 
@@ -97,14 +98,16 @@ export default function SettingsPage() {
           {/* Dark mode */}
           <div className="flex items-center justify-between px-md py-3 border-b border-primary/5">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">dark_mode</span>
+              <span className="material-symbols-outlined text-[20px] text-on-surface-variant">
+                {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+              </span>
               <span className="font-body-md text-body-md text-on-surface">Dark Mode</span>
             </div>
             <button
-              onClick={() => setDarkMode(d => !d)}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${darkMode ? 'bg-secondary' : 'bg-outline-variant'}`}
+              onClick={toggleTheme}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-secondary' : 'bg-outline-variant'}`}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 ${darkMode ? 'left-6' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 ${theme === 'dark' ? 'left-6' : 'left-0.5'}`} />
             </button>
           </div>
           {/* Text size */}

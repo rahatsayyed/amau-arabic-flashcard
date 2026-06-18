@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode — applies when <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* ── Colors ───────────────────────────────── */
   --color-primary:                   #002125;
@@ -112,6 +115,50 @@
   --text-arabic-body--line-height: 44px;
 }
 
+/* ── Dark mode token overrides ───────────────── */
+.dark {
+  --color-primary:                   #a2ccd3;
+  --color-on-primary:                #003640;
+  --color-primary-container:         #17363b;
+  --color-on-primary-container:      #a2ccd3;
+  --color-inverse-primary:           #456369;
+
+  --color-secondary:                 #ffb4a6;
+  --color-on-secondary:              #680003;
+  --color-secondary-container:       #8c1100;
+  --color-on-secondary-container:    #ffdad3;
+
+  --color-tertiary:                  #fcb882;
+  --color-on-tertiary:               #4a2800;
+  --color-tertiary-container:        #663d13;
+  --color-on-tertiary-container:     #ffdcc3;
+
+  --color-error:                     #ffb4ab;
+  --color-on-error:                  #690005;
+  --color-error-container:           #93000a;
+  --color-on-error-container:        #ffdad6;
+
+  --color-surface:                   #121614;
+  --color-on-surface:                #e2e4df;
+  --color-surface-variant:           #3f4843;
+  --color-on-surface-variant:        #bec8c3;
+  --color-surface-bright:            #37393b;
+  --color-surface-dim:               #0e1110;
+  --color-surface-tint:              #a2ccd3;
+  --color-surface-container-lowest:  #0c0f0d;
+  --color-surface-container-low:     #191c1a;
+  --color-surface-container:         #1e211f;
+  --color-surface-container-high:    #282b29;
+  --color-surface-container-highest: #333631;
+  --color-inverse-surface:           #e2e4df;
+  --color-inverse-on-surface:        #2f312e;
+
+  --color-background:                #121614;
+  --color-on-background:             #e2e4df;
+  --color-outline:                   #899390;
+  --color-outline-variant:           #3f4843;
+}
+
 /* ── Global resets ───────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -163,6 +210,10 @@ body {
   background-color: #fbf9f4;
   background-image: radial-gradient(#e4e2dd 0.8px, transparent 0.8px);
   background-size: 24px 24px;
+}
+.dark .subtle-pattern {
+  background-color: #121614;
+  background-image: radial-gradient(#282b29 0.8px, transparent 0.8px);
 }
 
 /* ── Arabic text ─────────────────────────────── */

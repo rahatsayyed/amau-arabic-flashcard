@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Noto_Serif, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import BottomNav from '@/components/BottomNav';
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 const beVietnamPro = Be_Vietnam_Pro({
   weight: ['400', '500', '600', '700', '800'],
@@ -49,23 +50,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* Anti-flash: set dark class before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('amau_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}` }} />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>
       <body
-        className={`${beVietnamPro.variable} ${sourceSerif4.variable} ${notoSerif.variable} bg-stone-300 flex justify-center items-start font-body-md text-on-surface`}
+        className={`${beVietnamPro.variable} ${sourceSerif4.variable} ${notoSerif.variable} bg-stone-300 dark:bg-stone-900 flex justify-center items-start font-body-md text-on-surface`}
       >
-        {/* Phone shell — 390px centred on desktop, full-width on mobile */}
-        <div className="w-full max-w-[390px] h-dvh bg-surface shadow-2xl flex flex-col">
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
-            {children}
+        <ThemeProvider>
+          {/* Phone shell — 390px centred on desktop, full-width on mobile */}
+          <div className="w-full max-w-[390px] h-dvh bg-surface shadow-2xl flex flex-col">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto">
+              {children}
+            </div>
+            {/* Bottom nav always visible at bottom of shell */}
+            <BottomNav />
           </div>
-          {/* Bottom nav always visible at bottom of shell */}
-          <BottomNav />
-        </div>
+        </ThemeProvider>
       </body>
     </html>
   );
