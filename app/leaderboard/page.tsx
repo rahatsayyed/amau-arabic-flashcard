@@ -231,7 +231,7 @@ export default function LeaderboardPage() {
 
       {/* ── Logged-in user context bar ── */}
       {!loading && isLoggedIn && showUserBar && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-105 px-6 z-40">
+        <div className="floating-bar bottom-20">
           <div className="p-4 rounded-2xl shadow-2xl flex items-center justify-between border-2 border-primary/20" style={{ background: '#17363B' }}>
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -265,7 +265,7 @@ export default function LeaderboardPage() {
 
       {/* ── Sign-in prompt (logged out) ── */}
       {!loading && !isLoggedIn && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-105 px-4 z-40">
+        <div className="floating-bar bottom-20">
           <div className="bg-primary-container rounded-2xl shadow-2xl p-4 flex items-center gap-4 border border-primary/10">
             <span className="material-symbols-outlined text-on-primary text-[36px] flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
               emoji_events

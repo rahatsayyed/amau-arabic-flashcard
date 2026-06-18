@@ -2,7 +2,6 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { getDeckById } from '@/data/vocabulary';
 import { saveCardReview, getDueCards, getUserProgress } from '@/lib/storage';
 import { saveProgressToCloud } from '@/lib/supabase/progress';
@@ -99,11 +98,16 @@ export default function StudySessionPage({ params }: { params: Promise<{ id: str
 
   if (phase === 'done') {
     const pct = queue.length > 0 ? Math.round((correct / queue.length) * 100) : 100;
+    // Use replace so the study URL is removed from history — back button on
+    // the deck page won't loop back into the result screen.
+    const goToDeck = () => router.replace(`/decks/${id}`);
+    const goHome   = () => router.replace('/');
+
     return (
       <>
         <header className="sticky top-0 z-50 flex items-center justify-between px-gutter h-16 bg-surface shadow-sm">
           <button
-            onClick={() => router.back()}
+            onClick={goToDeck}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors"
           >
             <span className="material-symbols-outlined text-primary">arrow_back</span>
@@ -130,18 +134,24 @@ export default function StudySessionPage({ params }: { params: Promise<{ id: str
           </p>
 
           <div className="w-full space-y-sm">
-            <Link
-              href={`/decks/${id}/study`}
+            <button
+              onClick={() => router.push(`/decks/${id}/study`)}
               className="w-full h-14 bg-secondary text-on-secondary flex items-center justify-center rounded-xl font-label-md text-label-md pressable-btn"
             >
               Study Again
-            </Link>
-            <Link
-              href={`/decks/${id}`}
+            </button>
+            <button
+              onClick={goToDeck}
               className="w-full h-14 bg-surface-container text-primary flex items-center justify-center rounded-xl font-label-md text-label-md"
             >
               Back to Deck
-            </Link>
+            </button>
+            <button
+              onClick={goHome}
+              className="w-full h-14 bg-surface border border-outline-variant text-on-surface-variant flex items-center justify-center rounded-xl font-label-md text-label-md"
+            >
+              Go to Home
+            </button>
           </div>
         </div>
       </>

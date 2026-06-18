@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ThemeProvider>
           {/* Phone shell — 390px centred on desktop, full-width on mobile */}
-          <div className="w-full max-w-[390px] h-dvh bg-surface shadow-2xl flex flex-col">
+          <div className="phone-shell w-full h-dvh bg-surface flex flex-col">
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto">
               {children}

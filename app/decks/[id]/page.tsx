@@ -570,7 +570,7 @@ export default function DeckDetailPage({
             onClick={() => setEditCard(null)}
           >
             <div
-              className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]"
+              className="bottom-sheet bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[50vh]"
               onClick={(e) => e.stopPropagation()}
             >
               <div

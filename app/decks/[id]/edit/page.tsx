@@ -442,7 +442,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Bottom CTAs */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] p-gutter bg-surface/90 backdrop-blur-md z-50 flex flex-col gap-sm">
+      <div className="floating-bar bottom-0 p-gutter bg-surface/90 backdrop-blur-md flex flex-col gap-sm">
         <button
           onClick={handleSave}
           className="w-full bg-secondary text-on-secondary font-bold py-4 rounded-xl shadow-lg hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -461,7 +461,7 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
       {/* Edit card bottom drawer — portal to escape phone shell */}
       {mounted && editCard && createPortal(
         <div className="fixed inset-0 bg-on-surface/40 z-50 flex items-end justify-center" onClick={() => setEditCard(null)}>
-          <div className="w-full max-w-[390px] bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[60vh]" onClick={e => e.stopPropagation()}>
+          <div className="bottom-sheet bg-surface-container-low rounded-t-xl shadow-lg flex flex-col max-h-[60vh]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center py-3 cursor-grab" onClick={() => setEditCard(null)}>
               <div className="w-10 h-1.5 bg-outline-variant rounded-full" />
             </div>
