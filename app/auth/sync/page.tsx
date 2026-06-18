@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getUserProgress } from '@/lib/storage';
 import { fetchCloudProgress, saveProgressToCloud } from '@/lib/supabase/progress';
+import { upsertProfile } from '@/lib/supabase/leaderboard';
+import { createClient } from '@/lib/supabase/client';
 import type { UserProgress } from '@/lib/storage';
 
 export default function AuthSyncPage() {
@@ -30,6 +32,14 @@ function AuthSyncContent() {
 
   useEffect(() => {
     async function check() {
+      // Upsert Google profile data so it appears on the leaderboard
+      const { data: { user } } = await createClient().auth.getUser();
+      if (user) {
+        const name = (user.user_metadata?.full_name as string | undefined) ?? '';
+        const avatar = (user.user_metadata?.avatar_url as string | undefined) ?? null;
+        upsertProfile(name, avatar).catch(() => {});
+      }
+
       const local = getUserProgress();
       const cloud = await fetchCloudProgress();
 
