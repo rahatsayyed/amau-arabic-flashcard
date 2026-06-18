@@ -174,6 +174,11 @@ export default function EditDeckPage({ params }: { params: Promise<{ id: string 
     router.back();
   };
 
+  if (builtinDeck) {
+    router.replace(`/decks/${id}`);
+    return null;
+  }
+
   if (!loaded) {
     return (
       <div className="flex items-center justify-center h-full">

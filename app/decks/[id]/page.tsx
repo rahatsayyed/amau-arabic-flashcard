@@ -297,18 +297,21 @@ export default function DeckDetailPage({
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-primary/10 rounded-xl shadow-lg overflow-hidden z-50">
-              <Link
-                href={`/decks/${id}/edit`}
-                onClick={() => setMenuOpen(false)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left"
-              >
-                <span className="material-symbols-outlined text-on-surface-variant">
-                  edit
-                </span>
-                <span className="font-label-md text-label-md text-on-surface">
-                  Edit Deck
-                </span>
-              </Link>
+              {isCustom ? (
+                <Link
+                  href={`/decks/${id}/edit`}
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant">edit</span>
+                  <span className="font-label-md text-label-md text-on-surface">Edit Deck</span>
+                </Link>
+              ) : (
+                <div className="w-full flex items-center gap-3 px-4 py-3 opacity-40 cursor-not-allowed select-none">
+                  <span className="material-symbols-outlined text-on-surface-variant">edit</span>
+                  <span className="font-label-md text-label-md text-on-surface">Edit Deck</span>
+                </div>
+              )}
               <button
                 onClick={() => { setMenuOpen(false); exportDeckAsJson(deck, true); }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left border-t border-primary/5"
