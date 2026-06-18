@@ -27,6 +27,16 @@ const notoSerif = Noto_Serif({
 export const metadata: Metadata = {
   title: 'AMĀU Arabic — Learn with FSRS',
   description: 'Learn Arabic vocabulary from AMAU Academy using spaced repetition.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {

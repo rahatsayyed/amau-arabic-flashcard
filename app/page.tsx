@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { DECKS } from '@/data/vocabulary';
 import { getUserProgress, getDeckProgress, getLastStudiedDeckId } from '@/lib/storage';
 
@@ -47,13 +48,13 @@ export default function HomePage() {
       {/* Top App Bar */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-gutter h-16 bg-primary-container text-on-primary tonal-elevation">
         <div className="flex items-center gap-sm">
-          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10">
-            <span className="font-bold text-xl">ع</span>
+          <div className="w-10 h-10 flex items-center justify-center rounded-full overflow-hidden bg-white/10">
+            <Image src="/icon-192.png" alt="AMĀU" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <span className="font-headline-lg-mobile text-headline-lg-mobile tracking-tight">Learn Arabic</span>
         </div>
         <Link
-          href="/login"
+          href="/profile"
           className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors"
         >
           <span className="material-symbols-outlined text-[20px]">person</span>
